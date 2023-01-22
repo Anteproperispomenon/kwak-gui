@@ -20,6 +20,8 @@ import Monomer.Widgets.Singles.TextArea
 
 import Graphics.UI.TinyFileDialogs (saveFileDialog, openFileDialog)
 
+import TextUTF8 qualified as TU
+
 -- from kwak-orth
 import Kwakwala.Sounds
 
@@ -29,6 +31,8 @@ data AppModel = AppModel
   , _outputOrth :: OutputOrth
   , _inputFile :: Text
   , _outputFile :: Text
+  -- , _inputText :: Text
+  -- , _outputText :: Text
   } deriving (Eq, Show)
 
 data AppEvent
@@ -93,10 +97,16 @@ buildUI wenv model = widgetTree where
       ]
     , spacer
     , button "Select File" AppOpenFile
-    , dropTarget (\txt -> AppSetInput txt) (textArea_ inputFile [readOnly])
+    , dropTarget (\txt -> AppSetInput txt) (textField_ inputFile [readOnly])
+    -- , spacer
+    -- , (textArea_ inputText [readOnly])
     , spacer
-    , button "Save File" AppSaveFile
-    , (textArea_ outputFile [])
+    , button "Choose Destination" AppSaveFile
+    , (textField_ outputFile [readOnly])
+    -- spacer
+    -- , (textArea_ outputText [])
+    , spacer
+    , button "Save File" AppWriteFile
     ] `styleBasic` [padding 10]
 
 handleEvent
@@ -118,7 +128,7 @@ handleEvent wenv node model evt = case evt of
     handleFile1 :: Maybe [Text] -> AppEvent
     handleFile1 Nothing = AppNull
     handleFile1 (Just []) = AppNull
-    handleFile1 (Just (f:fs)) = AppSetInput f
+    handleFile1 (Just (f:_fs)) = AppSetInput f
     handleFile2 :: Maybe Text -> AppEvent
     handleFile2 Nothing = AppNull
     handleFile2 (Just fnm) = AppSetOutput fnm

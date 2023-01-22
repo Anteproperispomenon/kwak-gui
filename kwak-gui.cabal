@@ -6,10 +6,10 @@ cabal-version: 1.12
 
 name:           kwak-gui
 version:        0.1.0.0
-homepage:       https://github.com/githubuser/monomer-starter#readme
-author:         Author name here
+homepage:       https://github.com/Anteproperispomenon/kwak-gui#README
+author:         David Wilson
 maintainer:     example@example.com
-copyright:      2021 Author name here
+copyright:      2022 David Wilson
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple

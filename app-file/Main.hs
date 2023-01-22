@@ -18,6 +18,8 @@ import Monomer.Widgets.Containers.Scroll
 import Monomer.Widgets.Singles.OptionButton
 import Monomer.Widgets.Singles.TextArea
 
+import Graphics.UI.TinyFileDialogs (saveFileDialog, openFileDialog)
+
 -- from kwak-orth
 import Kwakwala.Sounds
 
@@ -33,6 +35,11 @@ data AppEvent
   = AppInit
   | AppIncrease
   | AppSetInput Text
+  | AppSetOutput Text
+  | AppOpenFile -- triggers dialog
+  | AppSaveFile -- triggers dialog
+  | AppWriteFile -- Actually writes content to file
+  | AppNull -- Empty event
   deriving (Eq, Show)
 
 makeLenses 'AppModel
@@ -85,8 +92,10 @@ buildUI wenv model = widgetTree where
       , optionButton "IPA" OIpa (outputOrth)
       ]
     , spacer
+    , button "Select File" AppOpenFile
     , dropTarget (\txt -> AppSetInput txt) (textArea_ inputFile [readOnly])
     , spacer
+    , button "Save File" AppSaveFile
     , (textArea_ outputFile [])
     ] `styleBasic` [padding 10]
 
@@ -98,8 +107,22 @@ handleEvent
   -> [AppEventResponse AppModel AppEvent]
 handleEvent wenv node model evt = case evt of
   AppInit -> []
+  AppNull -> []
   AppIncrease -> [Model (model & clickCount +~ 1)]
-  (AppSetInput fnm) -> [Model (model & inputFile .~ fnm)]
+  (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm)]
+  (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm)]
+  AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "%HOME%" [] "Text Files" False]
+  AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" "%HOME%" [] "Text Files"]
+  AppWriteFile -> [] -- for now
+  where 
+    handleFile1 :: Maybe [Text] -> AppEvent
+    handleFile1 Nothing = AppNull
+    handleFile1 (Just []) = AppNull
+    handleFile1 (Just (f:fs)) = AppSetInput f
+    handleFile2 :: Maybe Text -> AppEvent
+    handleFile2 Nothing = AppNull
+    handleFile2 (Just fnm) = AppSetOutput fnm
+
 
 -- KurintoSansAux-Rg.ttf
 

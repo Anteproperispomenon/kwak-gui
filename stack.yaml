@@ -42,6 +42,7 @@ packages:
 extra-deps:
 - nanovg-0.8.1.0
 - monomer-1.5.0.0
+- tinyfiledialogs-0.2.1.0
 - git: https://github.com/Anteproperispomenon/kwak-orth.git
   commit: 3a219278e0f4a019ff227a287686bae35694561c
 #- git: https://github.com/fjvallarino/monomer

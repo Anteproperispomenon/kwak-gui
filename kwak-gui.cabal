@@ -55,6 +55,7 @@ executable kwak-gui-file
     , monomer
     , text
     , text-show
+    , tinyfiledialogs
   default-language: Haskell2010
 
 executable kwak-gui-text

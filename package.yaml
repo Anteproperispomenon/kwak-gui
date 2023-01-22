@@ -24,10 +24,15 @@ dependencies:
   - text
   - text-show
 
+library:
+  source-dirs:    src
+
 executables:
-  app:
-    source-dirs:      src
+  kwak-gui-text:
+    source-dirs:      app-text
     main:             Main.hs
     ghc-options:
     - -fwarn-incomplete-patterns
     - -threaded
+    dependencies:
+    - kwak-gui

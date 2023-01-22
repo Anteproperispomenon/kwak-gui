@@ -36,3 +36,11 @@ executables:
     - -threaded
     dependencies:
     - kwak-gui
+  kwak-gui-file:
+    source-dirs:  app-file
+    main:         Main.hs
+    ghc-options:
+    - -fwarn-incomplete-patterns
+    - -threaded
+    dependencies:
+    - kwak-gui

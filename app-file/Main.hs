@@ -4,6 +4,7 @@
 
 module Main where
 
+import Control.Exception
 import Control.Lens
 import Data.Maybe
 import Data.Text (Text)
@@ -53,6 +54,10 @@ data AppEvent
   | AppRefresh -- Refresh Output
   | AppCurDir FilePath
   | AppNull -- Empty event
+  | AppWriteSuccess
+  | AppWriteExists
+  | AppWriteError Text
+  | AppOverWrite -- when the user agrees to overwrite a file.
   deriving (Eq, Show)
 
 makeLenses 'AppModel
@@ -133,7 +138,11 @@ handleEvent wenv node model evt = case evt of
   AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" [] "Text Files" False]
   AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" inpDir [] "Text Files"]
   AppGotInput txt -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
-  AppWriteFile -> [] -- for now
+  AppWriteFile -> [Task $ writeFileTask (T.unpack (model ^. outputFile)) (model ^. outputText)] 
+  AppWriteSuccess -> [] -- Display a pop-up message, maybe?
+  AppWriteExists -> []
+  (AppWriteError err) -> []
+  AppOverWrite -> [Task $ overWriteFileTask (T.unpack (model ^. outputFile)) (model ^. outputText)] 
   AppRefresh -> [Model (model & outputText .~ getConversion (model ^. inputText))]
   (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
   where 
@@ -156,6 +165,24 @@ handleEvent wenv node model evt = case evt of
         pat' = T.unpack txt
         in T.pack $ takeDirectory pat'
 
+writeFileTask :: FilePath -> Text -> IO AppEvent
+writeFileTask fp txt = do
+  bl <- doesFileExist fp
+  if bl
+    then return AppWriteExists
+    else do 
+      eEvt <- try @SomeException (TU.writeFile fp txt)
+      case eEvt of
+        Left x   -> return (AppWriteError $ T.pack (show x))
+        Right () -> return AppWriteSuccess
+
+
+overWriteFileTask :: FilePath -> Text -> IO AppEvent
+overWriteFileTask fp txt = do
+  eEvt <- try @SomeException (TU.writeFile fp txt)
+  case eEvt of
+    Left x   -> return (AppWriteError $ T.pack (show x))
+    Right () -> return AppWriteSuccess
 
 -- KurintoSansAux-Rg.ttf
 

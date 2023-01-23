@@ -44,4 +44,6 @@ executables:
     - -threaded
     dependencies:
     - kwak-gui
+    - directory
+    - filepath
     - tinyfiledialogs

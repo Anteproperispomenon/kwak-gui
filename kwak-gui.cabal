@@ -49,6 +49,8 @@ executable kwak-gui-file
   build-depends:
       base >=4.7 && <5
     , data-default
+    , directory
+    , filepath
     , kwak-gui
     , kwak-orth
     , lens

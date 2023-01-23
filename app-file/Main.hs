@@ -22,6 +22,9 @@ import Monomer.Widgets.Singles.TextArea
 
 import Graphics.UI.TinyFileDialogs (saveFileDialog, openFileDialog)
 
+import System.Directory
+import System.FilePath
+
 import TextUTF8 qualified as TU
 
 -- from kwak-orth
@@ -35,6 +38,7 @@ data AppModel = AppModel
   , _outputFile :: Text
   , _inputText :: Text
   , _outputText :: Text
+  , _currentDir :: Text -- Current Working Directory
   } deriving (Eq, Show)
 
 data AppEvent
@@ -46,6 +50,8 @@ data AppEvent
   | AppSaveFile -- triggers dialog
   | AppWriteFile -- Actually writes content to file
   | AppGotInput Text
+  | AppRefresh -- Refresh Output
+  | AppCurDir FilePath
   | AppNull -- Empty event
   deriving (Eq, Show)
 
@@ -72,31 +78,31 @@ buildUI wenv model = widgetTree where
     , hstack
       [ label "Input:"
       , spacer
-      , optionButton "U'mista" IUmista (inputOrth)
+      , optionButton_ "U'mista" IUmista (inputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton "NAPA" INapa (inputOrth)
+      , optionButton_ "NAPA" INapa (inputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton "Grubb" IGrubb (inputOrth)
+      , optionButton_ "Grubb" IGrubb (inputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton "Boas" IBoas (inputOrth)
+      , optionButton_ "Boas" IBoas (inputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton "Georgian" IGeorgian (inputOrth)
+      , optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppRefresh]
       ]
     , spacer
     , hstack
       [ label "Input:"
       , spacer
-      , optionButton "U'mista" OUmista (outputOrth)
+      , optionButton_ "U'mista" OUmista (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton "NAPA" ONapa (outputOrth)
+      , optionButton_ "NAPA" ONapa (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton "Grubb" OGrubb (outputOrth)
+      , optionButton_ "Grubb" OGrubb (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton "Boas" OBoas (outputOrth)
+      , optionButton_ "Boas" OBoas (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton "Georgian" OGeorgian (outputOrth)
+      , optionButton_ "Georgian" OGeorgian (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton "IPA" OIpa (outputOrth)
+      , optionButton_ "IPA" OIpa (outputOrth) [onClick AppRefresh]
       ]
     , spacer
     , button "Select File" AppOpenFile
@@ -119,15 +125,17 @@ handleEvent
   -> AppEvent
   -> [AppEventResponse AppModel AppEvent]
 handleEvent wenv node model evt = case evt of
-  AppInit -> []
+  AppInit -> [Task $ AppCurDir <$> getCurrentDirectory]
   AppNull -> []
   AppIncrease -> [Model (model & clickCount +~ 1)]
   (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm), Task $ AppGotInput <$> TU.readFile (T.unpack fnm)]
   (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm)]
-  AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "%HOME%" [] "Text Files" False]
-  AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" "%HOME%" [] "Text Files"]
+  AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" [] "Text Files" False]
+  AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" inpDir [] "Text Files"]
   AppGotInput txt -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
   AppWriteFile -> [] -- for now
+  AppRefresh -> [Model (model & outputText .~ getConversion (model ^. inputText))]
+  (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
   where 
     handleFile1 :: Maybe [Text] -> AppEvent
     handleFile1 Nothing = AppNull
@@ -141,6 +149,12 @@ handleEvent wenv node model evt = case evt of
       inpO = model ^. inputOrth
       outO = model ^. outputOrth
       in decodeKwakwalaD outO $ parseKwakwalaD inpO inpTxt
+    inpDir :: Text
+    inpDir = case (model ^. inputFile) of
+      ""  -> ""
+      txt -> let
+        pat' = T.unpack txt
+        in T.pack $ takeDirectory pat'
 
 
 -- KurintoSansAux-Rg.ttf
@@ -159,4 +173,4 @@ main = do
       appFontDef "Universal" "./assets/fonts/KurintoSans-Rg.ttf",
       appInitEvent AppInit
       ]
-    model = AppModel 0 IUmista OUmista "" "" "" ""
+    model = AppModel 0 IUmista OUmista "" "" "" "" ""

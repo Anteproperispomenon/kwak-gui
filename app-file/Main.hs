@@ -40,6 +40,10 @@ data AppModel = AppModel
   , _inputText :: Text
   , _outputText :: Text
   , _currentDir :: Text -- Current Working Directory
+  , _overwriteConfVis :: Bool
+  , _errorAlertVis :: Bool
+  , _writeSuccessVis :: Bool
+  , _errorMsg :: Text
   } deriving (Eq, Show)
 
 data AppEvent
@@ -58,6 +62,7 @@ data AppEvent
   | AppWriteExists
   | AppWriteError Text
   | AppOverWrite -- when the user agrees to overwrite a file.
+  | AppClosePopups
   deriving (Eq, Show)
 
 makeLenses 'AppModel
@@ -121,6 +126,9 @@ buildUI wenv model = widgetTree where
     , vscroll $ (textArea_ outputText [readOnly]) `styleBasic` [textFont "Universal"]
     , spacer
     , button "Save File" AppWriteFile
+    , popup overwriteConfVis (confirmMsg "File already Exists. Overwrite?" AppOverWrite AppClosePopups)
+    , popup errorAlertVis (alertMsg (model ^. errorMsg) AppClosePopups)
+    , popup writeSuccessVis (alertMsg "File Saved Successfully." AppClosePopups)
     ] `styleBasic` [padding 10]
 
 handleEvent
@@ -136,14 +144,15 @@ handleEvent wenv node model evt = case evt of
   (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm), Task $ AppGotInput <$> TU.readFile (T.unpack fnm)]
   (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm)]
   AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" [] "Text Files" False]
-  AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" inpDir [] "Text Files"]
+  AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) [] "Text Files"]
   AppGotInput txt -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
   AppWriteFile -> [Task $ writeFileTask (T.unpack (model ^. outputFile)) (model ^. outputText)] 
-  AppWriteSuccess -> [] -- Display a pop-up message, maybe?
-  AppWriteExists -> []
-  (AppWriteError err) -> []
-  AppOverWrite -> [Task $ overWriteFileTask (T.unpack (model ^. outputFile)) (model ^. outputText)] 
+  AppWriteSuccess -> [Model (model & writeSuccessVis .~ True)] -- Display a pop-up message, maybe?
+  AppWriteExists -> [Model (model & overwriteConfVis .~ True)]
+  (AppWriteError err) -> [Model (model & errorMsg .~ (renderError err) & errorAlertVis .~ True)]
+  AppOverWrite -> [Task $ overWriteFileTask (T.unpack (model ^. outputFile)) (model ^. outputText), Model (model & overwriteConfVis .~ False)] 
   AppRefresh -> [Model (model & outputText .~ getConversion (model ^. inputText))]
+  AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False)]
   (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
   where 
     handleFile1 :: Maybe [Text] -> AppEvent
@@ -164,6 +173,8 @@ handleEvent wenv node model evt = case evt of
       txt -> let
         pat' = T.unpack txt
         in T.pack $ takeDirectory pat'
+    renderError :: Text -> Text
+    renderError err = "Error Trying to Save File:\n " <> err
 
 writeFileTask :: FilePath -> Text -> IO AppEvent
 writeFileTask fp txt = do
@@ -200,4 +211,4 @@ main = do
       appFontDef "Universal" "./assets/fonts/KurintoSans-Rg.ttf",
       appInitEvent AppInit
       ]
-    model = AppModel 0 IUmista OUmista "" "" "" "" ""
+    model = AppModel 0 IUmista OUmista "" "" "" "" "" False False False ""

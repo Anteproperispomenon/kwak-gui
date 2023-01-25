@@ -118,12 +118,12 @@ buildUI wenv model = widgetTree where
     , button "Select File" AppOpenFile
     , dropTarget (\txt -> AppSetInput txt) (textField_ inputFile [readOnly])
     , spacer
-    , vscroll $ (textArea_ inputText [readOnly]) `styleBasic` [textFont "Universal"]
+    , vscroll $ (textArea_ inputText [readOnly]) `styleBasic` [textFont $ selectFontI $ model ^. inputOrth]
     , spacer
     , button "Choose Destination" AppSaveFile
     , (textField_ outputFile [readOnly])
     , spacer
-    , vscroll $ (textArea_ outputText [readOnly]) `styleBasic` [textFont "Universal"]
+    , vscroll $ (textArea_ outputText [readOnly]) `styleBasic` [textFont $ selectFontO $ model ^. outputOrth]
     , spacer
     , button "Save File" AppWriteFile
     , popup overwriteConfVis (confirmMsg "File already Exists. Overwrite?" AppOverWrite AppClosePopups)
@@ -197,6 +197,21 @@ overWriteFileTask fp txt = do
 
 -- KurintoSansAux-Rg.ttf
 
+selectFontI :: InputOrth -> Font
+selectFontI IUmista   = "Umista"
+selectFontI INapa     = "NAPA"
+selectFontI IGrubb    = "Universal"
+selectFontI IGeorgian = "Georgian"
+selectFontI IBoas     = "Boas"
+
+selectFontO :: OutputOrth -> Font
+selectFontO OUmista   = "Umista"
+selectFontO ONapa     = "NAPA"
+selectFontO OGrubb    = "Universal"
+selectFontO OGeorgian = "Georgian"
+selectFontO OBoas     = "Boas"
+selectFontO OIpa      = "IPA"  
+
 main :: IO ()
 main = do
   startApp model handleEvent buildUI config
@@ -209,6 +224,11 @@ main = do
       -- appFontDef "Universal" "./assets/fonts/LiberationSans-Regular.ttf",
       -- appFontDef "Universal" "./assets/fonts/KurintoSansAux-Rg.ttf",
       appFontDef "Universal" "./assets/fonts/KurintoSans-Rg.ttf",
+      appFontDef "Georgian" "./assets/fonts/KurintoSans-Rg.ttf",  -- Will get more specific fonts later on.
+      appFontDef "Umista" "./assets/fonts/DoulosSIL-Regular.ttf",
+      appFontDef "NAPA" "./assets/fonts/DoulosSIL-Regular.ttf",
+      appFontDef "Boas" "./assets/fonts/KurintoSans-Rg.ttf",
+      appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appInitEvent AppInit
       ]
     model = AppModel 0 IUmista OUmista "" "" "" "" "" False False False ""

@@ -224,7 +224,7 @@ main = do
       -- appFontDef "Universal" "./assets/fonts/LiberationSans-Regular.ttf",
       -- appFontDef "Universal" "./assets/fonts/KurintoSansAux-Rg.ttf",
       appFontDef "Universal" "./assets/fonts/KurintoSans-Rg.ttf",
-      appFontDef "Georgian" "./assets/fonts/KurintoSans-Rg.ttf",  -- Will get more specific fonts later on.
+      appFontDef "Georgian" "./assets/fonts/NotoSansGeorgian-Regular.ttf",  -- Will get more specific fonts later on.
       appFontDef "Umista" "./assets/fonts/DoulosSIL-Regular.ttf",
       appFontDef "NAPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appFontDef "Boas" "./assets/fonts/KurintoSans-Rg.ttf",

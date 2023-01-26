@@ -116,15 +116,23 @@ buildUI wenv model = widgetTree where
       , optionButton_ "IPA" OIpa (outputOrth) [onClick AppRefresh]
       ]
     , spacer
-    , button "Select File" AppOpenFile
-    , dropTarget (\txt -> AppSetInput txt) (textField_ inputFile [readOnly])
-    , spacer
-    , vscroll $ (textArea_ inputText [readOnly]) `styleBasic` [textFont $ selectFontI $ model ^. inputOrth]
-    , spacer
-    , button "Choose Destination" AppSaveFile
-    , (textField_ outputFile [readOnly])
-    , spacer
-    , vscroll $ (textArea_ outputText [readOnly]) `styleBasic` [textFont $ selectFontO $ model ^. outputOrth]
+    , hstack
+      [ vstack 
+        [ button "Select File" AppOpenFile
+        , spacer
+        , dropTarget (\txt -> AppSetInput txt) (textField_ inputFile [readOnly])
+        , spacer
+        , vscroll $ (textArea_ inputText [readOnly]) `styleBasic` [textFont $ selectFontI $ model ^. inputOrth]
+        ]
+      , spacer
+      , vstack
+        [ button "Choose Destination" AppSaveFile
+        , spacer
+        , (textField_ outputFile [readOnly])
+        , spacer
+        , vscroll $ (textArea_ outputText [readOnly]) `styleBasic` [textFont $ selectFontO $ model ^. outputOrth]
+        ]
+      ]
     , spacer
     , button "Save File" AppWriteFile
     , popup overwriteConfVis (confirmMsg "File already Exists. Overwrite?" AppOverWrite AppClosePopups)

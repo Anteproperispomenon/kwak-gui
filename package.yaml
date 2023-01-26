@@ -2,11 +2,11 @@ name:                kwak-gui
 version:             0.1.0.0
 #synopsis:
 #description:
-homepage:            https://github.com/githubuser/monomer-starter#readme
+homepage:            https://github.com/Anteproperispomenon/kwak-gui#README
 license:             BSD3
-author:              Author name here
+author:              David Wilson
 maintainer:          example@example.com
-copyright:           2021 Author name here
+copyright:           2022 David Wilson
 #category:
 extra-source-files:
 - README.md
@@ -24,10 +24,26 @@ dependencies:
   - text
   - text-show
 
+library:
+  source-dirs:    src
+
 executables:
-  app:
-    source-dirs:      src
+  kwak-gui-text:
+    source-dirs:      app-text
     main:             Main.hs
     ghc-options:
     - -fwarn-incomplete-patterns
     - -threaded
+    dependencies:
+    - kwak-gui
+  kwak-gui-file:
+    source-dirs:  app-file
+    main:         Main.hs
+    ghc-options:
+    - -fwarn-incomplete-patterns
+    - -threaded
+    dependencies:
+    - kwak-gui
+    - directory
+    - filepath
+    - tinyfiledialogs

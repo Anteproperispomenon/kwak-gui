@@ -144,8 +144,8 @@ handleEvent wenv node model evt = case evt of
   AppIncrease -> [Model (model & clickCount +~ 1)]
   (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm), Task $ AppGotInput <$> TU.readFile (T.unpack fnm)]
   (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm)]
-  AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" [] "Text Files" False]
-  AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) [] "Text Files"]
+  AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" ["*.txt", "*.*"] "Text Files" False]
+  AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) ["*.txt", "*.*"] "Text Files"]
   AppGotInput txt -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
   AppWriteFile -> [Task $ writeFileTask (T.unpack (model ^. outputFile)) (model ^. outputText)] 
   AppWriteSuccess -> [Model (model & writeSuccessVis .~ True)] -- Display a pop-up message, maybe?

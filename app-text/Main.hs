@@ -85,11 +85,16 @@ buildUI wenv model = widgetTree where
       , optionButton "IPA" OIpa (outputOrth)
       ]
     , spacer
-    , label "Input"
-    , vscroll $ (textArea inputText) `styleBasic` [textFont "Universal"]
-    , spacer
-    , label "Output"
-    , vscroll $ (textArea_ outputText [readOnly]) `styleBasic` [textFont "Universal"]
+    , hgrid_ [childSpacing_ 8]
+      [ vstack
+        [ box_ [alignCenter] $ label "Input"
+        , (textArea inputText)  `styleBasic` [textFont $ selectFontI $ model ^. inputOrth]
+        ]
+      , vstack
+        [ box_ [alignCenter] $ label "Output"
+        , (textArea_ outputText [readOnly]) `styleBasic` [textFont $ selectFontO $ model ^. outputOrth]
+        ]
+      ]
     , spacer
     , button "Convert" AppConvert
     ] `styleBasic` [padding 10]
@@ -112,6 +117,21 @@ handleEvent wenv node model evt = case evt of
 
 -- KurintoSansAux-Rg.ttf
 
+selectFontI :: InputOrth -> Font
+selectFontI IUmista   = "Umista"
+selectFontI INapa     = "NAPA"
+selectFontI IGrubb    = "Universal"
+selectFontI IGeorgian = "Georgian"
+selectFontI IBoas     = "Boas"
+
+selectFontO :: OutputOrth -> Font
+selectFontO OUmista   = "Umista"
+selectFontO ONapa     = "NAPA"
+selectFontO OGrubb    = "Universal"
+selectFontO OGeorgian = "Georgian"
+selectFontO OBoas     = "Boas"
+selectFontO OIpa      = "IPA"  
+
 main :: IO ()
 main = do
   startApp model handleEvent buildUI config
@@ -124,6 +144,11 @@ main = do
       -- appFontDef "Universal" "./assets/fonts/LiberationSans-Regular.ttf",
       -- appFontDef "Universal" "./assets/fonts/KurintoSansAux-Rg.ttf",
       appFontDef "Universal" "./assets/fonts/KurintoSans-Rg.ttf",
+      appFontDef "Georgian" "./assets/fonts/NotoSansGeorgian-Regular.ttf",
+      appFontDef "Umista" "./assets/fonts/DoulosSIL-Regular.ttf",
+      appFontDef "NAPA" "./assets/fonts/DoulosSIL-Regular.ttf",
+      appFontDef "Boas" "./assets/fonts/KurintoSans-Rg.ttf",
+      appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appInitEvent AppInit
       ]
     model = AppModel 0 IUmista OUmista "" ""

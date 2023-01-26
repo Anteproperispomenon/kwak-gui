@@ -56,6 +56,7 @@ data AppEvent
   | AppWriteFile -- Actually writes content to file
   | AppGotInput Text
   | AppRefresh -- Refresh Output
+  | AppRefreshI -- Refresh Input, to change the font.
   | AppCurDir FilePath
   | AppNull -- Empty event
   | AppWriteSuccess
@@ -88,15 +89,15 @@ buildUI wenv model = widgetTree where
     , hstack
       [ label "Input:"
       , spacer
-      , optionButton_ "U'mista" IUmista (inputOrth) [onClick AppRefresh]
+      , optionButton_ "U'mista" IUmista (inputOrth) [onClick AppRefreshI]
       , spacer
-      , optionButton_ "NAPA" INapa (inputOrth) [onClick AppRefresh]
+      , optionButton_ "NAPA" INapa (inputOrth) [onClick AppRefreshI]
       , spacer
-      , optionButton_ "Grubb" IGrubb (inputOrth) [onClick AppRefresh]
+      , optionButton_ "Grubb" IGrubb (inputOrth) [onClick AppRefreshI]
       , spacer
-      , optionButton_ "Boas" IBoas (inputOrth) [onClick AppRefresh]
+      , optionButton_ "Boas" IBoas (inputOrth) [onClick AppRefreshI]
       , spacer
-      , optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppRefresh]
+      , optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppRefreshI]
       ]
     , spacer
     , hstack
@@ -151,7 +152,8 @@ handleEvent wenv node model evt = case evt of
   AppWriteExists -> [Model (model & overwriteConfVis .~ True)]
   (AppWriteError err) -> [Model (model & errorMsg .~ (renderError err) & errorAlertVis .~ True)]
   AppOverWrite -> [Task $ overWriteFileTask (T.unpack (model ^. outputFile)) (model ^. outputText), Model (model & overwriteConfVis .~ False)] 
-  AppRefresh -> [Model (model & outputText .~ getConversion (model ^. inputText))]
+  AppRefresh  -> [Model (model & outputText .~ getConversion (model ^. inputText))]
+  AppRefreshI -> [Model (model & outputText .~ getConversion (model ^. inputText) & inputText %~ modText)]
   AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False)]
   (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
   where 
@@ -175,6 +177,14 @@ handleEvent wenv node model evt = case evt of
         in T.pack $ takeDirectory pat'
     renderError :: Text -> Text
     renderError err = "Error Trying to Save File:\n " <> err
+    -- Slightly modify text by adding/removing a
+    -- space at the end. This is to trigger a render
+    -- update.
+    modText :: Text -> Text
+    modText txt = case (T.unsnoc txt) of
+      Nothing -> " "
+      Just (txt', ' ') -> txt'
+      Just (_txt,  _ ) -> (snoc txt ' ')
 
 writeFileTask :: FilePath -> Text -> IO AppEvent
 writeFileTask fp txt = do

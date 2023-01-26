@@ -116,13 +116,13 @@ buildUI wenv model = widgetTree where
       , optionButton_ "IPA" OIpa (outputOrth) [onClick AppRefresh]
       ]
     , spacer
-    , hsplit_ [splitIgnoreChildResize True]
-      ( vstack 
+    , hgrid_ [childSpacing_ 8]
+      [ vstack 
         [ button "Select File" AppOpenFile
         , spacer
-        , dropTarget (\txt -> AppSetInput txt) (textField_ inputFile [readOnly])
+        , (textField_ inputFile [readOnly])
         , spacer
-        , vscroll $ (textArea_ inputText [readOnly]) `styleBasic` [textFont $ selectFontI $ model ^. inputOrth]
+        , (textArea_ inputText [readOnly]) `styleBasic` [textFont $ selectFontI $ model ^. inputOrth]
         ]
       -- , spacer
       , vstack
@@ -130,9 +130,9 @@ buildUI wenv model = widgetTree where
         , spacer
         , (textField_ outputFile [readOnly])
         , spacer
-        , vscroll $ (textArea_ outputText [readOnly]) `styleBasic` [textFont $ selectFontO $ model ^. outputOrth]
+        , (textArea_ outputText [readOnly]) `styleBasic` [textFont $ selectFontO $ model ^. outputOrth]
         ]
-      )
+      ]
     , spacer
     , button "Save File" AppWriteFile
     , popup overwriteConfVis (confirmMsg "File already Exists. Overwrite?" AppOverWrite AppClosePopups)
@@ -187,7 +187,8 @@ handleEvent wenv node model evt = case evt of
     renderError err = "Error Trying to Save File:\n " <> err
     -- Slightly modify text by adding/removing a
     -- space at the end. This is to trigger a render
-    -- update.
+    -- update, so that the widget will use the new
+    -- font specified in its style.
     modText :: Text -> Text
     modText txt = case (T.unsnoc txt) of
       Nothing -> " "
@@ -242,7 +243,7 @@ main = do
       -- appFontDef "Universal" "./assets/fonts/LiberationSans-Regular.ttf",
       -- appFontDef "Universal" "./assets/fonts/KurintoSansAux-Rg.ttf",
       appFontDef "Universal" "./assets/fonts/KurintoSans-Rg.ttf",
-      appFontDef "Georgian" "./assets/fonts/NotoSansGeorgian-Regular.ttf",  -- Will get more specific fonts later on.
+      appFontDef "Georgian" "./assets/fonts/NotoSansGeorgian-Regular.ttf",
       appFontDef "Umista" "./assets/fonts/DoulosSIL-Regular.ttf",
       appFontDef "NAPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appFontDef "Boas" "./assets/fonts/KurintoSans-Rg.ttf",

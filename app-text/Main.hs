@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Main where
 
@@ -22,17 +23,19 @@ import Monomer.Widgets.Singles.TextArea
 import Kwakwala.Sounds
 
 data AppModel = AppModel 
-  { _clickCount :: Int
-  , _inputOrth  :: InputOrth
-  , _outputOrth :: OutputOrth
-  , _inputText  :: Text
-  , _outputText :: Text
+  { _clickCount  :: Int
+  , _inputOrth   :: InputOrth
+  , _outputOrth  :: OutputOrth
+  , _inputText   :: Text
+  , _outputText  :: Text
+  , _autoConvert :: Bool
   } deriving (Eq, Show)
 
 data AppEvent
   = AppInit
   | AppIncrease
   | AppConvert
+  | AppChange -- | When the input text box changes.
   deriving (Eq, Show)
 
 makeLenses 'AppModel
@@ -43,52 +46,42 @@ buildUI
   -> WidgetNode AppModel AppEvent
 buildUI wenv model = widgetTree where
   widgetTree = vstack 
-    [ label "Hello world"
-    , spacer
-    , hstack 
-      [ label $ "Click count: " <> showt (model ^. clickCount)
-      , spacer
-      , button "Increase count" AppIncrease
-      , spacer
-      , label $ "Input: " <> showt (model ^. inputOrth)
-      , spacer
-      , label $ "Output: " <> showt (model ^. outputOrth)
-      ]
+    [ labeledCheckbox "Auto-Convert Text" autoConvert
     , spacer
     , hstack
       [ label "Input " `styleBasic` [textFont "Monotype"]
       , spacer
-      , optionButton "U'mista" IUmista (inputOrth)
+      , optionButton_ "U'mista" IUmista (inputOrth) [onClick AppChange]
       , spacer
-      , optionButton "NAPA" INapa (inputOrth)
+      , optionButton_ "NAPA" INapa (inputOrth) [onClick AppChange]
       , spacer
-      , optionButton "Grubb" IGrubb (inputOrth)
+      , optionButton_ "Grubb" IGrubb (inputOrth) [onClick AppChange]
       , spacer
-      , optionButton "Boas" IBoas (inputOrth)
+      , optionButton_ "Boas" IBoas (inputOrth) [onClick AppChange]
       , spacer
-      , optionButton "Georgian" IGeorgian (inputOrth)
+      , optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppChange]
       ]
     , spacer
     , hstack
       [ label "Output" `styleBasic` [textFont "Monotype"]
       , spacer
-      , optionButton "U'mista" OUmista (outputOrth)
+      , optionButton_ "U'mista" OUmista (outputOrth) [onClick AppChange]
       , spacer
-      , optionButton "NAPA" ONapa (outputOrth)
+      , optionButton_ "NAPA" ONapa (outputOrth) [onClick AppChange]
       , spacer
-      , optionButton "Grubb" OGrubb (outputOrth)
+      , optionButton_ "Grubb" OGrubb (outputOrth) [onClick AppChange]
       , spacer
-      , optionButton "Boas" OBoas (outputOrth)
+      , optionButton_ "Boas" OBoas (outputOrth) [onClick AppChange]
       , spacer
-      , optionButton "Georgian" OGeorgian (outputOrth)
+      , optionButton_ "Georgian" OGeorgian (outputOrth) [onClick AppChange]
       , spacer
-      , optionButton "IPA" OIpa (outputOrth)
+      , optionButton_ "IPA" OIpa (outputOrth) [onClick AppChange]
       ]
     , spacer
     , hgrid_ [childSpacing_ 8]
       [ vstack
         [ box_ [alignCenter] $ label "Input"
-        , (textArea inputText)  `styleBasic` [textFont $ selectFontI $ model ^. inputOrth]
+        , (textArea_  inputText [onChange (\(_txt :: Text) -> AppChange)])  `styleBasic` [textFont $ selectFontI $ model ^. inputOrth]
         ]
       , vstack
         [ box_ [alignCenter] $ label "Output"
@@ -114,6 +107,15 @@ handleEvent wenv node model evt = case evt of
         outO = model ^. outputOrth
         txt2 = decodeKwakwalaD outO $ parseKwakwalaD inpO txt1
     in [Model (model & outputText .~ txt2)]
+  AppChange ->
+    case (model ^. autoConvert) of
+      True  -> 
+        let txt1 = model ^. inputText
+            inpO = model ^. inputOrth
+            outO = model ^. outputOrth
+            txt2 = decodeKwakwalaD outO $ parseKwakwalaD inpO txt1
+        in [Model (model & outputText .~ txt2)]
+      False -> []
 
 -- KurintoSansAux-Rg.ttf
 
@@ -152,4 +154,4 @@ main = do
       appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appInitEvent AppInit
       ]
-    model = AppModel 0 IUmista OUmista "" ""
+    model = AppModel 0 IUmista OUmista "" "" False

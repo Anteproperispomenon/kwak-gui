@@ -56,7 +56,7 @@ buildUI wenv model = widgetTree where
       ]
     , spacer
     , hstack
-      [ label "Input:"
+      [ label "Input " `styleBasic` [textFont "Monotype"]
       , spacer
       , optionButton "U'mista" IUmista (inputOrth)
       , spacer
@@ -70,7 +70,7 @@ buildUI wenv model = widgetTree where
       ]
     , spacer
     , hstack
-      [ label "Input:"
+      [ label "Output" `styleBasic` [textFont "Monotype"]
       , spacer
       , optionButton "U'mista" OUmista (outputOrth)
       , spacer
@@ -143,6 +143,7 @@ main = do
       appFontDef "Regular" "./assets/fonts/Roboto-Regular.ttf",
       -- appFontDef "Universal" "./assets/fonts/LiberationSans-Regular.ttf",
       -- appFontDef "Universal" "./assets/fonts/KurintoSansAux-Rg.ttf",
+      appFontDef "Monotype" "./assets/fonts/LiberationMono-Regular.ttf",
       appFontDef "Universal" "./assets/fonts/KurintoSans-Rg.ttf",
       appFontDef "Georgian" "./assets/fonts/NotoSansGeorgian-Regular.ttf",
       appFontDef "Umista" "./assets/fonts/DoulosSIL-Regular.ttf",

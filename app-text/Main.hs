@@ -29,6 +29,7 @@ data AppModel = AppModel
   , _inputText   :: Text
   , _outputText  :: Text
   , _autoConvert :: Bool
+  , _lastOutput  :: OutputOrth
   } deriving (Eq, Show)
 
 data AppEvent
@@ -36,6 +37,7 @@ data AppEvent
   | AppIncrease
   | AppConvert
   | AppChange -- | When the input text box changes.
+  | AppSwap
   deriving (Eq, Show)
 
 makeLenses 'AppModel
@@ -46,7 +48,11 @@ buildUI
   -> WidgetNode AppModel AppEvent
 buildUI wenv model = widgetTree where
   widgetTree = vstack 
-    [ labeledCheckbox "Auto-Convert Text" autoConvert
+    [ hstack
+      [ labeledCheckbox "Auto-Convert Text" autoConvert
+      , spacer
+      , button "\x21CB Swap Orthographies" AppSwap `styleBasic` [textFont "Universal"]
+      ]
     , spacer
     , hstack
       [ label "Input " `styleBasic` [textFont "Monotype"]
@@ -108,7 +114,7 @@ handleEvent wenv node model evt = case evt of
         inpO = model ^. inputOrth
         outO = model ^. outputOrth
         txt2 = decodeKwakwalaD outO $ parseKwakwalaD inpO txt1
-    in [Model (model & outputText .~ txt2)]
+    in [Model (model & outputText .~ txt2 & lastOutput .~ outO)]
   AppChange ->
     case (model ^. autoConvert) of
       True  -> 
@@ -116,8 +122,22 @@ handleEvent wenv node model evt = case evt of
             inpO = model ^. inputOrth
             outO = model ^. outputOrth
             txt2 = decodeKwakwalaD outO $ parseKwakwalaD inpO txt1
-        in [Model (model & outputText .~ txt2)]
+        in [Model (model & outputText .~ txt2 & lastOutput .~ outO)]
       False -> []
+  AppSwap ->
+    case (model ^. lastOutput) of
+      OIpa -> [] -- maybe add error message
+      orth -> 
+        let 
+          txtO = model ^. outputText
+          ortO = model ^. lastOutput
+          ortI = model ^. inputOrth
+          ortO' = orthO2I ortO -- Maybe InputOrth
+          ortI' = orthI2O ortI -- OutputOrth
+          txtI = (\ort -> (decodeKwakwalaD ortI' $ parseKwakwalaD ort txtO, ort)) <$> ortO'
+        in case txtI of
+          Nothing        -> []
+          Just (txt,ort) -> [Model (model & outputText .~ txt & inputText .~ txtO & inputOrth .~ ort & outputOrth .~ ortI' & lastOutput .~ ortI')]
 
 -- KurintoSansAux-Rg.ttf
 
@@ -156,4 +176,4 @@ main = do
       appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appInitEvent AppInit
       ]
-    model = AppModel 0 IUmista OUmista "" "" False
+    model = AppModel 0 IUmista OUmista "" "" False OUmista

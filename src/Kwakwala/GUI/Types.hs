@@ -3,6 +3,8 @@ module Kwakwala.GUI.Types
   , OutputOrth(..)
   , parseKwakwalaD
   , decodeKwakwalaD
+  , orthI2O
+  , orthO2I
   ) where
 
 import Data.Text (Text)
@@ -11,7 +13,6 @@ import TextShow
 import Kwakwala.Parsers
 import Kwakwala.Output
 import Kwakwala.Sounds
-
 
 -- | Inpot Orthography Option
 data InputOrth
@@ -61,3 +62,19 @@ decodeKwakwalaD OGrubb    = decodeToGrubbAsciiJ -- for now
 decodeKwakwalaD OBoas     = decodeToPseudoBoas
 decodeKwakwalaD OIpa      = decodeToIpa
 decodeKwakwalaD OGeorgian = decodeToGeorgianTitle
+
+orthI2O :: InputOrth -> OutputOrth
+orthI2O IUmista = OUmista
+orthI2O INapa = ONapa
+orthI2O IGrubb = OGrubb
+orthI2O IGeorgian = OGeorgian
+orthI2O IBoas = OBoas
+
+orthO2I :: OutputOrth -> Maybe InputOrth
+orthO2I OUmista = Just IUmista
+orthO2I ONapa = Just INapa
+orthO2I OGrubb = Just IGrubb
+orthO2I OGeorgian = Just IGeorgian
+orthO2I OBoas = Just IBoas
+orthO2I _ = Nothing
+

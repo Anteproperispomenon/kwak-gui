@@ -86,7 +86,9 @@ buildUI wenv model = widgetTree where
       , vstack
         [ box_ [alignCenter] $ label "Output"
         , (textArea_ outputText [readOnly]) `styleBasic` [textFont $ selectFontO $ model ^. outputOrth]
-        ]
+        , spacer
+        , buttonD_ "Copy to Clipboard" [onClickReq (SetClipboard (ClipboardText $ model ^. outputText))]
+        ] -- don't add 'onChange' to this textArea.
       ]
     , spacer
     , button "Convert" AppConvert

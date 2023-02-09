@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 
@@ -26,8 +26,10 @@ library
   default-extensions:
       ImportQualifiedPost
       OverloadedStrings
+      ScopedTypeVariables
   build-depends:
       base >=4.7 && <5
+    , bytestring
     , data-default
     , kwak-orth
     , lens
@@ -45,9 +47,11 @@ executable kwak-gui-file
   default-extensions:
       ImportQualifiedPost
       OverloadedStrings
+      ScopedTypeVariables
   ghc-options: -fwarn-incomplete-patterns -threaded
   build-depends:
       base >=4.7 && <5
+    , bytestring
     , data-default
     , directory
     , filepath
@@ -69,9 +73,11 @@ executable kwak-gui-text
   default-extensions:
       ImportQualifiedPost
       OverloadedStrings
+      ScopedTypeVariables
   ghc-options: -fwarn-incomplete-patterns -threaded
   build-depends:
       base >=4.7 && <5
+    , bytestring
     , data-default
     , kwak-gui
     , kwak-orth

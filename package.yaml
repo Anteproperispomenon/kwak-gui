@@ -19,6 +19,7 @@ default-extensions:
 dependencies:
   - base >= 4.7 && < 5
   - kwak-orth
+  - bytestring
   - data-default
   - lens
   - monomer
@@ -45,6 +46,7 @@ executables:
     - -threaded
     dependencies:
     - kwak-gui
+    - bytestring
     - directory
     - filepath
     - tinyfiledialogs

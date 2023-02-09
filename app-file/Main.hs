@@ -6,9 +6,11 @@ module Main where
 
 import Control.Exception
 import Control.Lens
+import Data.ByteString qualified as BS
 import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import Monomer
 import TextShow
 
@@ -32,8 +34,7 @@ import TextUTF8 qualified as TU
 import Kwakwala.Sounds
 
 data AppModel = AppModel 
-  { _clickCount :: Int
-  , _inputOrth  :: InputOrth
+  { _inputOrth  :: InputOrth
   , _outputOrth :: OutputOrth
   , _inputFile :: Text
   , _outputFile :: Text
@@ -43,18 +44,18 @@ data AppModel = AppModel
   , _overwriteConfVis :: Bool
   , _errorAlertVis :: Bool
   , _writeSuccessVis :: Bool
+  , _openErrorVis :: Bool
   , _errorMsg :: Text
   } deriving (Eq, Show)
 
 data AppEvent
   = AppInit
-  | AppIncrease
   | AppSetInput Text
   | AppSetOutput Text
   | AppOpenFile -- triggers dialog
   | AppSaveFile -- triggers dialog
   | AppWriteFile -- Actually writes content to file
-  | AppGotInput Text
+  | AppGotInput (Maybe Text)
   | AppRefresh -- Refresh Output
   | AppRefreshI -- Refresh Input, to change the font.
   | AppCurDir FilePath
@@ -74,20 +75,8 @@ buildUI
   -> WidgetNode AppModel AppEvent
 buildUI wenv model = widgetTree where
   widgetTree = vstack 
-    [ label "Hello world"
-    , spacer
-    , hstack 
-      [ label $ "Click count: " <> showt (model ^. clickCount)
-      , spacer
-      , button "Increase count" AppIncrease
-      , spacer
-      , label $ "Input: " <> showt (model ^. inputOrth)
-      , spacer
-      , label $ "Output: " <> showt (model ^. outputOrth)
-      ]
-    , spacer
-    , hstack
-      [ label "Input:"
+    [ hstack
+      [ label "Input " `styleBasic` [textFont "Monotype"]
       , spacer
       , optionButton_ "U'mista" IUmista (inputOrth) [onClick AppRefreshI]
       , spacer
@@ -101,7 +90,7 @@ buildUI wenv model = widgetTree where
       ]
     , spacer
     , hstack
-      [ label "Input:"
+      [ label "Output" `styleBasic` [textFont "Monotype"]
       , spacer
       , optionButton_ "U'mista" OUmista (outputOrth) [onClick AppRefresh]
       , spacer
@@ -116,20 +105,29 @@ buildUI wenv model = widgetTree where
       , optionButton_ "IPA" OIpa (outputOrth) [onClick AppRefresh]
       ]
     , spacer
-    , button "Select File" AppOpenFile
-    , dropTarget (\txt -> AppSetInput txt) (textField_ inputFile [readOnly])
-    , spacer
-    , vscroll $ (textArea_ inputText [readOnly]) `styleBasic` [textFont $ selectFontI $ model ^. inputOrth]
-    , spacer
-    , button "Choose Destination" AppSaveFile
-    , (textField_ outputFile [readOnly])
-    , spacer
-    , vscroll $ (textArea_ outputText [readOnly]) `styleBasic` [textFont $ selectFontO $ model ^. outputOrth]
+    , hgrid_ [childSpacing_ 8]
+      [ vstack 
+        [ button "Select File" AppOpenFile
+        , spacer
+        , (textField_ inputFile [readOnly])
+        , spacer
+        , (textArea_ inputText [readOnly]) `styleBasic` [textFont $ selectFontI $ model ^. inputOrth]
+        ]
+      -- , spacer
+      , vstack
+        [ button "Choose Destination" AppSaveFile
+        , spacer
+        , (textField_ outputFile [readOnly])
+        , spacer
+        , (textArea_ outputText [readOnly]) `styleBasic` [textFont $ selectFontO $ model ^. outputOrth]
+        ]
+      ]
     , spacer
     , button "Save File" AppWriteFile
     , popup overwriteConfVis (confirmMsg "File already Exists. Overwrite?" AppOverWrite AppClosePopups)
     , popup errorAlertVis (alertMsg (model ^. errorMsg) AppClosePopups)
     , popup writeSuccessVis (alertMsg "File Saved Successfully." AppClosePopups)
+    , popup openErrorVis (alertMsg "Could not open requested file." AppClosePopups)
     ] `styleBasic` [padding 10]
 
 handleEvent
@@ -141,12 +139,14 @@ handleEvent
 handleEvent wenv node model evt = case evt of
   AppInit -> [Task $ AppCurDir <$> getCurrentDirectory]
   AppNull -> []
-  AppIncrease -> [Model (model & clickCount +~ 1)]
-  (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm), Task $ AppGotInput <$> TU.readFile (T.unpack fnm)]
+  -- AppIncrease -> [Model (model & clickCount +~ 1)]
+  (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm), Task $ AppGotInput <$> readFileMaybe (T.unpack fnm)]
   (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm)]
   AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" ["*.txt", "*.*"] "Text Files" False]
   AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) ["*.txt", "*.*"] "Text Files"]
-  AppGotInput txt -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
+  AppGotInput mtxt -> case mtxt of
+     (Just txt) -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
+     Nothing    -> [Model (model & openErrorVis .~ True)]
   AppWriteFile -> [Task $ writeFileTask (T.unpack (model ^. outputFile)) (model ^. outputText)] 
   AppWriteSuccess -> [Model (model & writeSuccessVis .~ True)] -- Display a pop-up message, maybe?
   AppWriteExists -> [Model (model & overwriteConfVis .~ True)]
@@ -154,7 +154,7 @@ handleEvent wenv node model evt = case evt of
   AppOverWrite -> [Task $ overWriteFileTask (T.unpack (model ^. outputFile)) (model ^. outputText), Model (model & overwriteConfVis .~ False)] 
   AppRefresh  -> [Model (model & outputText .~ getConversion (model ^. inputText))]
   AppRefreshI -> [Model (model & outputText .~ getConversion (model ^. inputText) & inputText %~ modText)]
-  AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False)]
+  AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False & openErrorVis .~ False)]
   (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
   where 
     handleFile1 :: Maybe [Text] -> AppEvent
@@ -179,7 +179,8 @@ handleEvent wenv node model evt = case evt of
     renderError err = "Error Trying to Save File:\n " <> err
     -- Slightly modify text by adding/removing a
     -- space at the end. This is to trigger a render
-    -- update.
+    -- update, so that the widget will use the new
+    -- font specified in its style.
     modText :: Text -> Text
     modText txt = case (T.unsnoc txt) of
       Nothing -> " "
@@ -222,23 +223,31 @@ selectFontO OGeorgian = "Georgian"
 selectFontO OBoas     = "Boas"
 selectFontO OIpa      = "IPA"  
 
+readFileMaybe :: FilePath -> IO (Maybe Text)
+readFileMaybe fp = do
+  mtxt <- T.decodeUtf8' <$> BS.readFile fp
+  case mtxt of
+    Right txt -> return (Just txt)
+    Left _    -> return Nothing
+
 main :: IO ()
 main = do
   startApp model handleEvent buildUI config
   where
     config = [
-      appWindowTitle "Hello world",
+      appWindowTitle "Kwak'wala Orthography Conversion (File)",
       appWindowIcon "./assets/images/icon.png",
       appTheme darkTheme,
       appFontDef "Regular" "./assets/fonts/Roboto-Regular.ttf",
       -- appFontDef "Universal" "./assets/fonts/LiberationSans-Regular.ttf",
       -- appFontDef "Universal" "./assets/fonts/KurintoSansAux-Rg.ttf",
+      appFontDef "Monotype" "./assets/fonts/LiberationMono-Regular.ttf",
       appFontDef "Universal" "./assets/fonts/KurintoSans-Rg.ttf",
-      appFontDef "Georgian" "./assets/fonts/NotoSansGeorgian-Regular.ttf",  -- Will get more specific fonts later on.
+      appFontDef "Georgian" "./assets/fonts/NotoSansGeorgian-Regular.ttf",
       appFontDef "Umista" "./assets/fonts/DoulosSIL-Regular.ttf",
       appFontDef "NAPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appFontDef "Boas" "./assets/fonts/KurintoSans-Rg.ttf",
       appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appInitEvent AppInit
       ]
-    model = AppModel 0 IUmista OUmista "" "" "" "" "" False False False ""
+    model = AppModel IUmista OUmista "" "" "" "" "" False False False False ""

@@ -32,8 +32,8 @@ import TextUTF8 qualified as TU
 import Kwakwala.Sounds
 
 data AppModel = AppModel 
-  { _clickCount :: Int
-  , _inputOrth  :: InputOrth
+  -- { _clickCount :: Int
+  { _inputOrth  :: InputOrth
   , _outputOrth :: OutputOrth
   , _inputFile :: Text
   , _outputFile :: Text
@@ -48,7 +48,7 @@ data AppModel = AppModel
 
 data AppEvent
   = AppInit
-  | AppIncrease
+  -- | AppIncrease
   | AppSetInput Text
   | AppSetOutput Text
   | AppOpenFile -- triggers dialog
@@ -68,13 +68,9 @@ data AppEvent
 
 makeLenses 'AppModel
 
-buildUI
-  :: WidgetEnv AppModel AppEvent
-  -> AppModel
-  -> WidgetNode AppModel AppEvent
-buildUI wenv model = widgetTree where
-  widgetTree = vstack 
-    [ label "Hello world"
+{-
+
+label "Hello world"
     , spacer
     , hstack 
       [ label $ "Click count: " <> showt (model ^. clickCount)
@@ -85,8 +81,16 @@ buildUI wenv model = widgetTree where
       , spacer
       , label $ "Output: " <> showt (model ^. outputOrth)
       ]
-    , spacer
-    , hstack
+
+-}
+
+buildUI
+  :: WidgetEnv AppModel AppEvent
+  -> AppModel
+  -> WidgetNode AppModel AppEvent
+buildUI wenv model = widgetTree where
+  widgetTree = vstack 
+    [ hstack
       [ label "Input " `styleBasic` [textFont "Monotype"]
       , spacer
       , optionButton_ "U'mista" IUmista (inputOrth) [onClick AppRefreshI]
@@ -149,7 +153,7 @@ handleEvent
 handleEvent wenv node model evt = case evt of
   AppInit -> [Task $ AppCurDir <$> getCurrentDirectory]
   AppNull -> []
-  AppIncrease -> [Model (model & clickCount +~ 1)]
+  -- AppIncrease -> [Model (model & clickCount +~ 1)]
   (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm), Task $ AppGotInput <$> TU.readFile (T.unpack fnm)]
   (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm)]
   AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" ["*.txt", "*.*"] "Text Files" False]
@@ -236,7 +240,7 @@ main = do
   startApp model handleEvent buildUI config
   where
     config = [
-      appWindowTitle "Hello world",
+      appWindowTitle "Kwak'wala Orthography Conversion (File)",
       appWindowIcon "./assets/images/icon.png",
       appTheme darkTheme,
       appFontDef "Regular" "./assets/fonts/Roboto-Regular.ttf",
@@ -251,4 +255,4 @@ main = do
       appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appInitEvent AppInit
       ]
-    model = AppModel 0 IUmista OUmista "" "" "" "" "" False False False ""
+    model = AppModel IUmista OUmista "" "" "" "" "" False False False ""

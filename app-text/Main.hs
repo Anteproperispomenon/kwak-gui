@@ -23,8 +23,8 @@ import Monomer.Widgets.Singles.TextArea
 import Kwakwala.Sounds
 
 data AppModel = AppModel 
-  { _clickCount  :: Int
-  , _inputOrth   :: InputOrth
+  -- { _clickCount  :: Int
+  { _inputOrth   :: InputOrth
   , _outputOrth  :: OutputOrth
   , _inputText   :: Text
   , _outputText  :: Text
@@ -34,7 +34,7 @@ data AppModel = AppModel
 
 data AppEvent
   = AppInit
-  | AppIncrease
+  -- | AppIncrease
   | AppConvert
   | AppChange -- | When the input text box changes.
   | AppSwap
@@ -108,7 +108,7 @@ handleEvent
   -> [AppEventResponse AppModel AppEvent]
 handleEvent wenv node model evt = case evt of
   AppInit -> []
-  AppIncrease -> [Model (model & clickCount +~ 1)]
+  -- AppIncrease -> [Model (model & clickCount +~ 1)]
   AppConvert -> 
     let txt1 = model ^. inputText
         inpO = model ^. inputOrth
@@ -161,7 +161,7 @@ main = do
   startApp model handleEvent buildUI config
   where
     config = [
-      appWindowTitle "Hello world",
+      appWindowTitle "Kwak'wala Orthography Conversion (Text)",
       appWindowIcon "./assets/images/icon.png",
       appTheme darkTheme,
       appFontDef "Regular" "./assets/fonts/Roboto-Regular.ttf",
@@ -176,4 +176,4 @@ main = do
       appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appInitEvent AppInit
       ]
-    model = AppModel 0 IUmista OUmista "" "" False OUmista
+    model = AppModel IUmista OUmista "" "" False OUmista

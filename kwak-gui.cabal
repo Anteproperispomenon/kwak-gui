@@ -18,6 +18,7 @@ extra-source-files:
 
 library
   exposed-modules:
+      Kwakwala.GUI.Config
       Kwakwala.GUI.Types
   other-modules:
       Paths_kwak_gui

@@ -27,6 +27,7 @@ library
   hs-source-dirs:
       src
   default-extensions:
+      FlexibleInstances
       ImportQualifiedPost
       OverloadedStrings
       ScopedTypeVariables
@@ -52,6 +53,7 @@ executable kwak-gui-file
   hs-source-dirs:
       app-file
   default-extensions:
+      FlexibleInstances
       ImportQualifiedPost
       OverloadedStrings
       ScopedTypeVariables
@@ -80,6 +82,7 @@ executable kwak-gui-text
   hs-source-dirs:
       app-text
   default-extensions:
+      FlexibleInstances
       ImportQualifiedPost
       OverloadedStrings
       ScopedTypeVariables

@@ -52,8 +52,8 @@ data AppModel = AppModel
   , _openErrorVis :: Bool
   , _configVis :: Bool
   , _errorMsg :: Text
-  , _kwakConfig :: KwakConfigModel
-  -- , _kwakConfig :: Ini KwakConfigModel
+  -- , _kwakConfig :: KwakConfigModel
+  , _kwakConfig :: Ini KwakConfigModel
   } deriving (Eq, Show)
 
 data AppEvent
@@ -101,8 +101,8 @@ buildUI wenv model = widgetTree where
       ]
     , spacer
     , popup configVis $ vstack
-        -- [ kwakConfigWidgetX (kwakConfig . iniValueL)
-        [ kwakConfigWidgetX kwakConfig
+        [ kwakConfigWidgetX (kwakConfig . iniValueL)
+        -- [ kwakConfigWidgetX kwakConfig
         , button "Done" AppDoneConfig
         ]
     , hstack
@@ -269,7 +269,7 @@ main = do
       appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appInitEvent AppInit
       ]
-    -- defIni = ini def configSpec
-    model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def
-    model' (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt def
-    model' (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" (getIniValue iniX)
+    defIni = ini def configSpec
+    -- model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def
+    model' (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni
+    model' (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" iniX -- (getIniValue iniX)

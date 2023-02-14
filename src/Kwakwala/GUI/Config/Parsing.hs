@@ -23,3 +23,11 @@ parseConfig :: T.Text -> Either T.Text (Ini KwakConfigModel)
 parseConfig txt = case (parseIni txt (ini def configSpec)) of
   Left  str -> Left  $ T.pack str
   Right ins -> Right $ ins
+
+instance Eq (Ini KwakConfigModel) where
+  x == y =
+    (getIniValue x) == (getIniValue y)
+      && (getRawIni x) == (getRawIni y)
+
+instance Show (Ini KwakConfigModel) where
+  show x = "Ini (" ++ show (getIniValue x) ++ ")"

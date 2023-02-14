@@ -5,6 +5,8 @@
 module Kwakwala.GUI.Config
   ( KwakConfigModel(..)
   , kcmGrubbUseJ
+  , kwakConfigWidget
+  , kwakConfigWidgetX
   ) where
 
 import Control.Lens
@@ -38,6 +40,10 @@ kwakConfigWidget mdlLens f = vscroll $ vstack
   [ labeledCheckbox "Use 'J' to represent the phoneme /h/ in Grubb" ((cloneLens mdlLens) . kcmGrubbUseJ)
   ]
 
-
-
+-- | Same as `kwakConfigWidget`, but doesn't
+-- raise any events on its own.
+kwakConfigWidgetX :: WidgetEvent e => ALens' s KwakConfigModel -> WidgetNode s e
+kwakConfigWidgetX mdlLens = vscroll $ vstack
+  [ labeledCheckbox "Use 'J' to represent the phoneme /h/ in Grubb" ((cloneLens mdlLens) . kcmGrubbUseJ)
+  ]
 

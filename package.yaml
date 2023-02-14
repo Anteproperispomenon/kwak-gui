@@ -15,12 +15,16 @@ default-extensions:
 - ImportQualifiedPost
 - OverloadedStrings
 - ScopedTypeVariables
+- TypeApplications
 
 dependencies:
   - base >= 4.7 && < 5
   - kwak-orth
   - bytestring
+  - config-ini
   - data-default
+  - directory
+  - filepath
   - lens
   - monomer
   - text

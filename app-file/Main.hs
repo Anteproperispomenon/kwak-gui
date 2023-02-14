@@ -7,6 +7,8 @@ module Main where
 import Control.Exception
 import Control.Lens
 import Data.ByteString qualified as BS
+import Data.Default (def)
+import Data.Ini.Config.Bidir
 import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -14,6 +16,9 @@ import Data.Text.Encoding qualified as T
 import Monomer
 import TextShow
 
+import Kwakwala.GUI.Config
+import Kwakwala.GUI.Config.File
+import Kwakwala.GUI.Config.Parsing
 import Kwakwala.GUI.Types
 
 import qualified Monomer.Lens as L
@@ -36,16 +41,19 @@ import Kwakwala.Sounds
 data AppModel = AppModel 
   { _inputOrth  :: InputOrth
   , _outputOrth :: OutputOrth
-  , _inputFile :: Text
+  , _inputFile  :: Text
   , _outputFile :: Text
-  , _inputText :: Text
+  , _inputText  :: Text
   , _outputText :: Text
   , _currentDir :: Text -- Current Working Directory
   , _overwriteConfVis :: Bool
   , _errorAlertVis :: Bool
   , _writeSuccessVis :: Bool
   , _openErrorVis :: Bool
+  , _configVis :: Bool
   , _errorMsg :: Text
+  , _kwakConfig :: KwakConfigModel
+  -- , _kwakConfig :: Ini KwakConfigModel
   } deriving (Eq, Show)
 
 data AppEvent
@@ -65,6 +73,8 @@ data AppEvent
   | AppWriteError Text
   | AppOverWrite -- when the user agrees to overwrite a file.
   | AppClosePopups
+  | AppDoneConfig
+  | AppOpenConfig
   deriving (Eq, Show)
 
 makeLenses 'AppModel
@@ -75,7 +85,8 @@ buildUI
   -> WidgetNode AppModel AppEvent
 buildUI wenv model = widgetTree where
   widgetTree = vstack 
-    [ hstack
+    [ button "Config" AppOpenConfig
+    , hstack
       [ label "Input " `styleBasic` [textFont "Monotype"]
       , spacer
       , optionButton_ "U'mista" IUmista (inputOrth) [onClick AppRefreshI]
@@ -89,6 +100,11 @@ buildUI wenv model = widgetTree where
       , optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppRefreshI]
       ]
     , spacer
+    , popup configVis $ vstack
+        -- [ kwakConfigWidgetX (kwakConfig . iniValueL)
+        [ kwakConfigWidgetX kwakConfig
+        , button "Done" AppDoneConfig
+        ]
     , hstack
       [ label "Output" `styleBasic` [textFont "Monotype"]
       , spacer
@@ -154,8 +170,10 @@ handleEvent wenv node model evt = case evt of
   AppOverWrite -> [Task $ overWriteFileTask (T.unpack (model ^. outputFile)) (model ^. outputText), Model (model & overwriteConfVis .~ False)] 
   AppRefresh  -> [Model (model & outputText .~ getConversion (model ^. inputText))]
   AppRefreshI -> [Model (model & outputText .~ getConversion (model ^. inputText) & inputText %~ modText)]
-  AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False & openErrorVis .~ False)]
+  AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False & openErrorVis .~ False & configVis .~ False)]
   (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
+  AppDoneConfig -> [Model (model & configVis .~ False)] -- Add task here to update config file.
+  AppOpenConfig -> [Model (model & configVis .~ True )]
   where 
     handleFile1 :: Maybe [Text] -> AppEvent
     handleFile1 Nothing = AppNull
@@ -232,7 +250,8 @@ readFileMaybe fp = do
 
 main :: IO ()
 main = do
-  startApp model handleEvent buildUI config
+  eConf <- findAndCreateConf
+  startApp (model' eConf) handleEvent buildUI config
   where
     config = [
       appWindowTitle "Kwak'wala Orthography Conversion (File)",
@@ -250,4 +269,7 @@ main = do
       appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appInitEvent AppInit
       ]
-    model = AppModel IUmista OUmista "" "" "" "" "" False False False False ""
+    -- defIni = ini def configSpec
+    model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def
+    model' (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt def
+    model' (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" (getIniValue iniX)

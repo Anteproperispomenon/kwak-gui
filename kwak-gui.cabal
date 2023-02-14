@@ -19,6 +19,8 @@ extra-source-files:
 library
   exposed-modules:
       Kwakwala.GUI.Config
+      Kwakwala.GUI.Config.File
+      Kwakwala.GUI.Config.Parsing
       Kwakwala.GUI.Types
   other-modules:
       Paths_kwak_gui
@@ -28,10 +30,14 @@ library
       ImportQualifiedPost
       OverloadedStrings
       ScopedTypeVariables
+      TypeApplications
   build-depends:
       base >=4.7 && <5
     , bytestring
+    , config-ini
     , data-default
+    , directory
+    , filepath
     , kwak-orth
     , lens
     , monomer
@@ -49,10 +55,12 @@ executable kwak-gui-file
       ImportQualifiedPost
       OverloadedStrings
       ScopedTypeVariables
+      TypeApplications
   ghc-options: -fwarn-incomplete-patterns -threaded
   build-depends:
       base >=4.7 && <5
     , bytestring
+    , config-ini
     , data-default
     , directory
     , filepath
@@ -75,11 +83,15 @@ executable kwak-gui-text
       ImportQualifiedPost
       OverloadedStrings
       ScopedTypeVariables
+      TypeApplications
   ghc-options: -fwarn-incomplete-patterns -threaded
   build-depends:
       base >=4.7 && <5
     , bytestring
+    , config-ini
     , data-default
+    , directory
+    , filepath
     , kwak-gui
     , kwak-orth
     , lens

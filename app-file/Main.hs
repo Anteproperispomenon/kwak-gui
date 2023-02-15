@@ -172,7 +172,8 @@ handleEvent wenv node model evt = case evt of
   AppRefreshI -> [Model (model & outputText .~ getConversion (model ^. inputText) & inputText %~ modText)]
   AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False & openErrorVis .~ False & configVis .~ False)]
   (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
-  AppDoneConfig -> [Model (model & configVis .~ False)] -- Add task here to update config file.
+  AppDoneConfig -> let newCfg = selfUpdate (model ^. kwakConfig)
+    in [Model (model & configVis .~ False & kwakConfig .~ newCfg)] -- Add task here to update config file.
   AppOpenConfig -> [Model (model & configVis .~ True )]
   where 
     handleFile1 :: Maybe [Text] -> AppEvent
@@ -199,6 +200,10 @@ handleEvent wenv node model evt = case evt of
     -- space at the end. This is to trigger a render
     -- update, so that the widget will use the new
     -- font specified in its style.
+    -- Note: might want to have two copies
+    -- of the input text in the model, one that
+    -- is left unmodified, and one that is 
+    -- modified and displayed.
     modText :: Text -> Text
     modText txt = case (T.unsnoc txt) of
       Nothing -> " "
@@ -250,7 +255,7 @@ readFileMaybe fp = do
 
 main :: IO ()
 main = do
-  eConf <- findAndCreateConf
+  (cfgFile, eConf) <- findAndCreateConf
   startApp (model' eConf) handleEvent buildUI config
   where
     config = [

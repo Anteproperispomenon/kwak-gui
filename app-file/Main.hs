@@ -52,8 +52,9 @@ data AppModel = AppModel
   , _openErrorVis :: Bool
   , _configVis :: Bool
   , _errorMsg :: Text
-  -- , _kwakConfig :: KwakConfigModel
-  , _kwakConfig :: Ini KwakConfigModel
+  , _kwakConfig :: KwakConfigModel
+  , _cfgFilePath :: FilePath
+  -- , _kwakConfig :: Ini KwakConfigModel
   } deriving (Eq, Show)
 
 data AppEvent
@@ -101,8 +102,8 @@ buildUI wenv model = widgetTree where
       ]
     , spacer
     , popup configVis $ vstack
-        [ kwakConfigWidgetX (kwakConfig . iniValueL)
-        -- [ kwakConfigWidgetX kwakConfig
+        -- [ kwakConfigWidgetX (kwakConfig . iniValueL)
+        [ kwakConfigWidgetX kwakConfig
         , button "Done" AppDoneConfig
         ]
     , hstack
@@ -172,8 +173,9 @@ handleEvent wenv node model evt = case evt of
   AppRefreshI -> [Model (model & outputText .~ getConversion (model ^. inputText) & inputText %~ modText)]
   AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False & openErrorVis .~ False & configVis .~ False)]
   (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
-  AppDoneConfig -> let newCfg = selfUpdate (model ^. kwakConfig)
-    in [Model (model & configVis .~ False & kwakConfig .~ newCfg)] -- Add task here to update config file.
+  AppDoneConfig -> [Model (model & configVis .~ False), Task $ writeConfigTask (model ^. cfgFilePath) (model ^. kwakConfig)]
+  -- AppDoneConfig -> let newCfg = selfUpdate (model ^. kwakConfig)
+  --   in [Model (model & configVis .~ False & kwakConfig .~ newCfg)] -- Add task here to update config file.
   AppOpenConfig -> [Model (model & configVis .~ True )]
   where 
     handleFile1 :: Maybe [Text] -> AppEvent
@@ -221,13 +223,19 @@ writeFileTask fp txt = do
         Left x   -> return (AppWriteError $ T.pack (show x))
         Right () -> return AppWriteSuccess
 
-
 overWriteFileTask :: FilePath -> Text -> IO AppEvent
 overWriteFileTask fp txt = do
   eEvt <- try @SomeException (TU.writeFile fp txt)
   case eEvt of
     Left x   -> return (AppWriteError $ T.pack (show x))
     Right () -> return AppWriteSuccess
+
+writeConfigTask :: FilePath -> KwakConfigModel -> IO AppEvent
+writeConfigTask fp kcm = do
+  rslt <- updateConfigFile' fp kcm
+  case rslt of
+    Just err -> return $ AppWriteError ("Error writing config file:\n" <> err)
+    Nothing  -> return AppNull
 
 -- KurintoSansAux-Rg.ttf
 
@@ -256,7 +264,7 @@ readFileMaybe fp = do
 main :: IO ()
 main = do
   (cfgFile, eConf) <- findAndCreateConf
-  startApp (model' eConf) handleEvent buildUI config
+  startApp (model' cfgFile eConf) handleEvent buildUI config
   where
     config = [
       appWindowTitle "Kwak'wala Orthography Conversion (File)",
@@ -274,7 +282,11 @@ main = do
       appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appInitEvent AppInit
       ]
-    defIni = ini def configSpec
-    -- model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def
-    model' (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni
-    model' (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" iniX -- (getIniValue iniX)
+    -- model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def cfgFile
+    -- Not using Ini in Model version:
+    model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt def cfgFile
+    model' cfgFile (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" (getIniValue iniX) cfgFile
+    -- Using Ini in Model version:
+    -- defIni = ini def configSpec
+    -- model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni cfgFile
+    -- model' cfgFile (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" iniX cfgFile

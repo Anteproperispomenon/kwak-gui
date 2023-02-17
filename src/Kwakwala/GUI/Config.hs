@@ -5,6 +5,7 @@
 module Kwakwala.GUI.Config
   ( KwakConfigModel(..)
   , kcmGrubbUseJ
+  , kcmIpaTies
   , kwakConfigWidget
   , kwakConfigWidgetX
   ) where
@@ -21,11 +22,13 @@ import Monomer
 -- that are used.
 data KwakConfigModel = KwakConfigModel
   { _kcmGrubbUseJ :: Bool
+  , _kcmIpaTies :: Bool
   } deriving (Eq, Show)
 
 instance Default KwakConfigModel where
   def = KwakConfigModel
     { _kcmGrubbUseJ = True
+    , _kcmIpaTies = True
     }
 
 data KwakConfigEvent
@@ -38,6 +41,7 @@ makeLenses 'KwakConfigModel
 kwakConfigWidget :: WidgetEvent e => ALens' s KwakConfigModel -> (KwakConfigEvent -> e) -> WidgetNode s e
 kwakConfigWidget mdlLens f = vscroll $ vstack
   [ labeledCheckbox "Use 'J' to represent the phoneme /h/ in Grubb" ((cloneLens mdlLens) . kcmGrubbUseJ)
+  , labeledCheckbox "Use ties for affricates in IPA" ((cloneLens mdlLens) . kcmIpaTies)
   ]
 
 -- | Same as `kwakConfigWidget`, but doesn't
@@ -45,5 +49,6 @@ kwakConfigWidget mdlLens f = vscroll $ vstack
 kwakConfigWidgetX :: WidgetEvent e => ALens' s KwakConfigModel -> WidgetNode s e
 kwakConfigWidgetX mdlLens = vscroll $ vstack
   [ labeledCheckbox "Use 'J' to represent the phoneme /h/ in Grubb" ((cloneLens mdlLens) . kcmGrubbUseJ)
+  , labeledCheckbox "Use ties for affricates in IPA" ((cloneLens mdlLens) . kcmIpaTies)
   ]
 

@@ -73,7 +73,6 @@ updateConfigFile' fp kcm = ignoreResult <$> do
 -- NOTE: Instead of opening and re-opening the file
 -- separately, maybe open the file once in ReadWriteMode?
 
-
 {-
   case eTxt of
     Left  e   -> return $ Just T.pack $ displayException e
@@ -86,7 +85,6 @@ updateConfigFile' fp kcm = ignoreResult <$> do
 updateConfigFile :: FilePath -> Ini KwakConfigModel -> IO ()
 updateConfigFile fp _ = return ()
   -- hmm...
-
 
 -- Alternative Proposal:
 -- only store a KwakConfigModel

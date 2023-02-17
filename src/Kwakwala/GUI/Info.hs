@@ -30,7 +30,7 @@ tooltipK :: Text -> WidgetNode s e -> WidgetNode s e
 tooltipK txt = tooltip_ txt [tooltipDelay 600]
 
 ttGrubb :: Text
-ttGrubb = "ASCII-compatible encoding based on David Grubb's orthography."
+ttGrubb = "ASCII-compatible orthography based on David Grubb's orthography."
 
 ttNapa :: Text
 ttNapa = "Orthography based on NAPA used around Campbell River. Sometimes referred to as IPA."

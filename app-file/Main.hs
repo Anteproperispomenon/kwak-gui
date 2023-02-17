@@ -106,7 +106,7 @@ buildUI wenv model = widgetTree where
     , popup_ configVis [popupAlignToWindow, alignTop, alignCenter] $ vstack
         -- [ kwakConfigWidgetX (kwakConfig . iniValueL)
         [ kwakConfigWidgetX kwakConfig
-        , button "Done" AppDoneConfig
+        , button_ "Done" AppDoneConfig [onClick AppRefreshI]
         ]
     , hstack
       [ label "Output" `styleBasic` [textFont "Monotype"]
@@ -144,7 +144,7 @@ buildUI wenv model = widgetTree where
     , spacer
     , button "Save File" AppWriteFile
     , popup overwriteConfVis (confirmMsg "File already Exists. Overwrite?" AppOverWrite AppClosePopups)
-    , popup errorAlertVis (alertMsg (model ^. errorMsg) AppClosePopups)
+    , popup errorAlertVis (alertMsg (model ^. errorMsg) AppClosePopups) `styleBasic` [textFont "Monotype"]
     , popup writeSuccessVis (alertMsg "File Saved Successfully." AppClosePopups)
     , popup openErrorVis (alertMsg "Could not open requested file." AppClosePopups)
     ] `styleBasic` [padding 10]

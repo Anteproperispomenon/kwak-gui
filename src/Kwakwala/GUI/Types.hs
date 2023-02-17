@@ -60,11 +60,13 @@ decodeKwakwalaD :: KwakConfigModel -> OutputOrth -> [CasedChar] -> Text
 decodeKwakwalaD _ OUmista   = decodeToUmista
 decodeKwakwalaD _ ONapa     = decodeToNapa
 decodeKwakwalaD _ OBoas     = decodeToPseudoBoas
-decodeKwakwalaD _ OIpa      = decodeToIpa
 decodeKwakwalaD _ OGeorgian = decodeToGeorgianTitle
 decodeKwakwalaD kcm OGrubb
   | (_kcmGrubbUseJ kcm) = decodeToGrubbAsciiJ
   | otherwise           = decodeToGrubbAscii
+decodeKwakwalaD kcm OIpa
+  | (_kcmIpaTies kcm) = decodeToIpa
+  | otherwise         = decodeToIpaAlt
 
 orthI2O :: InputOrth -> OutputOrth
 orthI2O IUmista = OUmista

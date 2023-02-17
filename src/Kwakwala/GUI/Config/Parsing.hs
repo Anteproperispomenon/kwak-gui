@@ -18,6 +18,9 @@ configSpec = do
   section "GRUBB" $ do
     kcmGrubbUseJ .= field "use-j" bool
                       & comment ["If true, use the letter 'j' to", "represent the phoneme /h/."]
+  section "IPA" $ do
+    kcmIpaTies   .= field "use-ties" bool
+                      & comment ["If true, use ties for affricates in IPA."]
 
 parseConfig :: T.Text -> Either T.Text (Ini KwakConfigModel)
 parseConfig txt = case (parseIni txt (ini def configSpec)) of

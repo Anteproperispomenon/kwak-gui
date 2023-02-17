@@ -189,7 +189,8 @@ handleEvent wenv node model evt = case evt of
     getConversion inpTxt = let 
       inpO = model ^. inputOrth
       outO = model ^. outputOrth
-      in decodeKwakwalaD outO $ parseKwakwalaD inpO inpTxt
+      kcm  = model ^. kwakConfig
+      in decodeKwakwalaD kcm outO $ parseKwakwalaD kcm inpO inpTxt
     inpDir :: Text
     inpDir = case (model ^. inputFile) of
       ""  -> ""

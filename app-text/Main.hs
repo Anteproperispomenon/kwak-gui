@@ -5,11 +5,13 @@
 module Main where
 
 import Control.Lens
+import Data.Default (def)
 import Data.Maybe
 import Data.Text (Text)
 import Monomer
 import TextShow
 
+import Kwakwala.GUI.Config
 import Kwakwala.GUI.Types
 
 import qualified Monomer.Lens as L
@@ -23,18 +25,17 @@ import Monomer.Widgets.Singles.TextArea
 import Kwakwala.Sounds
 
 data AppModel = AppModel 
-  -- { _clickCount  :: Int
   { _inputOrth   :: InputOrth
   , _outputOrth  :: OutputOrth
   , _inputText   :: Text
   , _outputText  :: Text
   , _autoConvert :: Bool
   , _lastOutput  :: OutputOrth
+  , _kwakConfig  :: KwakConfigModel
   } deriving (Eq, Show)
 
 data AppEvent
   = AppInit
-  -- | AppIncrease
   | AppConvert
   | AppChange -- | When the input text box changes.
   | AppSwap
@@ -113,7 +114,8 @@ handleEvent wenv node model evt = case evt of
     let txt1 = model ^. inputText
         inpO = model ^. inputOrth
         outO = model ^. outputOrth
-        txt2 = decodeKwakwalaD outO $ parseKwakwalaD inpO txt1
+        kcm  = model ^. kwakConfig
+        txt2 = decodeKwakwalaD kcm outO $ parseKwakwalaD kcm inpO txt1
     in [Model (model & outputText .~ txt2 & lastOutput .~ outO)]
   AppChange ->
     case (model ^. autoConvert) of
@@ -121,7 +123,8 @@ handleEvent wenv node model evt = case evt of
         let txt1 = model ^. inputText
             inpO = model ^. inputOrth
             outO = model ^. outputOrth
-            txt2 = decodeKwakwalaD outO $ parseKwakwalaD inpO txt1
+            kcm  = model ^. kwakConfig
+            txt2 = decodeKwakwalaD kcm outO $ parseKwakwalaD kcm inpO txt1
         in [Model (model & outputText .~ txt2 & lastOutput .~ outO)]
       False -> []
   AppSwap ->
@@ -134,7 +137,8 @@ handleEvent wenv node model evt = case evt of
           ortI = model ^. inputOrth
           ortO' = orthO2I ortO -- Maybe InputOrth
           ortI' = orthI2O ortI -- OutputOrth
-          txtI = (\ort -> (decodeKwakwalaD ortI' $ parseKwakwalaD ort txtO, ort)) <$> ortO'
+          kcm   = model ^. kwakConfig
+          txtI = (\ort -> (decodeKwakwalaD kcm ortI' $ parseKwakwalaD kcm ort txtO, ort)) <$> ortO'
         in case txtI of
           Nothing        -> []
           Just (txt,ort) -> [Model (model & outputText .~ txt & inputText .~ txtO & inputOrth .~ ort & outputOrth .~ ortI' & lastOutput .~ ortI')]
@@ -176,4 +180,4 @@ main = do
       appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appInitEvent AppInit
       ]
-    model = AppModel IUmista OUmista "" "" False OUmista
+    model = AppModel IUmista OUmista "" "" False OUmista def

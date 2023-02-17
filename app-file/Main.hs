@@ -103,11 +103,12 @@ buildUI wenv model = widgetTree where
       , tooltipK ttGeorgian $ optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppRefreshI]
       ]
     , spacer
-    , popup_ configVis [popupAlignToWindow, alignTop, alignCenter] $ vstack
-        -- [ kwakConfigWidgetX (kwakConfig . iniValueL)
-        [ kwakConfigWidgetX kwakConfig
-        , button_ "Done" AppDoneConfig [onClick AppRefreshI]
-        ]
+    , popup_ configVis [popupAlignToWindow, alignTop, alignCenter] $ 
+        box $ vstack
+          -- [ kwakConfigWidgetX (kwakConfig . iniValueL)
+          [ kwakConfigWidgetX kwakConfig
+          , button "Done" AppDoneConfig
+          ] `styleBasic` [bgColor dimGray, padding 10]
     , hstack
       [ label "Output" `styleBasic` [textFont "Monotype"]
       , spacer
@@ -175,7 +176,7 @@ handleEvent wenv node model evt = case evt of
   AppRefreshI -> [Model (model & outputText .~ getConversion (model ^. inputText) & inputText %~ modText)]
   AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False & openErrorVis .~ False & configVis .~ False)]
   (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
-  AppDoneConfig -> [Model (model & configVis .~ False), Task $ writeConfigTask (model ^. cfgFilePath) (model ^. kwakConfig)]
+  AppDoneConfig -> [Event AppRefresh, Model (model & configVis .~ False), Task $ writeConfigTask (model ^. cfgFilePath) (model ^. kwakConfig)]
   -- AppDoneConfig -> let newCfg = selfUpdate (model ^. kwakConfig)
   --   in [Model (model & configVis .~ False & kwakConfig .~ newCfg)] -- Add task here to update config file.
   AppOpenConfig -> [Model (model & configVis .~ True )]

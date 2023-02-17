@@ -12,6 +12,7 @@ import Monomer
 import TextShow
 
 import Kwakwala.GUI.Config
+import Kwakwala.GUI.Info
 import Kwakwala.GUI.Types
 
 import qualified Monomer.Lens as L
@@ -58,31 +59,31 @@ buildUI wenv model = widgetTree where
     , hstack
       [ label "Input " `styleBasic` [textFont "Monotype"]
       , spacer
-      , optionButton_ "U'mista" IUmista (inputOrth) [onClick AppChange]
+      , tooltipK ttUmista   $ optionButton_ "U'mista" IUmista (inputOrth) [onClick AppChange]
       , spacer
-      , optionButton_ "NAPA" INapa (inputOrth) [onClick AppChange]
+      , tooltipK ttNapa     $ optionButton_ "NAPA" INapa (inputOrth) [onClick AppChange]
       , spacer
-      , optionButton_ "Grubb" IGrubb (inputOrth) [onClick AppChange]
+      , tooltipK ttGrubb    $ optionButton_ "Grubb" IGrubb (inputOrth) [onClick AppChange]
       , spacer
-      , optionButton_ "Boas" IBoas (inputOrth) [onClick AppChange]
+      , tooltipK ttBoas     $ optionButton_ "Boas" IBoas (inputOrth) [onClick AppChange]
       , spacer
-      , optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppChange]
+      , tooltipK ttGeorgian $ optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppChange]
       ]
     , spacer
     , hstack
       [ label "Output" `styleBasic` [textFont "Monotype"]
       , spacer
-      , optionButton_ "U'mista" OUmista (outputOrth) [onClick AppChange]
+      , tooltipK ttUmista   $ optionButton_ "U'mista" OUmista (outputOrth) [onClick AppChange]
       , spacer
-      , optionButton_ "NAPA" ONapa (outputOrth) [onClick AppChange]
+      , tooltipK ttNapa     $ optionButton_ "NAPA" ONapa (outputOrth) [onClick AppChange]
       , spacer
-      , optionButton_ "Grubb" OGrubb (outputOrth) [onClick AppChange]
+      , tooltipK ttGrubb    $ optionButton_ "Grubb" OGrubb (outputOrth) [onClick AppChange]
       , spacer
-      , optionButton_ "Boas" OBoas (outputOrth) [onClick AppChange]
+      , tooltipK ttBoas'    $ optionButton_ "Boas" OBoas (outputOrth) [onClick AppChange]
       , spacer
-      , optionButton_ "Georgian" OGeorgian (outputOrth) [onClick AppChange]
+      , tooltipK ttGeorgian $ optionButton_ "Georgian" OGeorgian (outputOrth) [onClick AppChange]
       , spacer
-      , optionButton_ "IPA" OIpa (outputOrth) [onClick AppChange]
+      , tooltipK ttIpa      $ optionButton_ "IPA" OIpa (outputOrth) [onClick AppChange]
       ]
     , spacer
     , hgrid_ [childSpacing_ 8]

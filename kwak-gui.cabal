@@ -22,6 +22,7 @@ library
       Kwakwala.GUI.Config.File
       Kwakwala.GUI.Config.Parsing
       Kwakwala.GUI.Exception
+      Kwakwala.GUI.Info
       Kwakwala.GUI.Types
   other-modules:
       Paths_kwak_gui

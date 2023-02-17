@@ -19,6 +19,7 @@ import TextShow
 import Kwakwala.GUI.Config
 import Kwakwala.GUI.Config.File
 import Kwakwala.GUI.Config.Parsing
+import Kwakwala.GUI.Info
 import Kwakwala.GUI.Types
 
 import qualified Monomer.Lens as L
@@ -87,21 +88,22 @@ buildUI
 buildUI wenv model = widgetTree where
   widgetTree = vstack 
     [ button "Config" AppOpenConfig
+    , spacer
     , hstack
       [ label "Input " `styleBasic` [textFont "Monotype"]
       , spacer
-      , optionButton_ "U'mista" IUmista (inputOrth) [onClick AppRefreshI]
+      , tooltipK ttUmista   $ optionButton_ "U'mista" IUmista (inputOrth) [onClick AppRefreshI]
       , spacer
-      , optionButton_ "NAPA" INapa (inputOrth) [onClick AppRefreshI]
+      , tooltipK ttNapa     $ optionButton_ "NAPA" INapa (inputOrth) [onClick AppRefreshI]
       , spacer
-      , optionButton_ "Grubb" IGrubb (inputOrth) [onClick AppRefreshI]
+      , tooltipK ttGrubb    $ optionButton_ "Grubb" IGrubb (inputOrth) [onClick AppRefreshI]
       , spacer
-      , optionButton_ "Boas" IBoas (inputOrth) [onClick AppRefreshI]
+      , tooltipK ttBoas     $ optionButton_ "Boas" IBoas (inputOrth) [onClick AppRefreshI]
       , spacer
-      , optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppRefreshI]
+      , tooltipK ttGeorgian $ optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppRefreshI]
       ]
     , spacer
-    , popup configVis $ vstack
+    , popup_ configVis [popupAlignToWindow, alignTop, alignCenter] $ vstack
         -- [ kwakConfigWidgetX (kwakConfig . iniValueL)
         [ kwakConfigWidgetX kwakConfig
         , button "Done" AppDoneConfig
@@ -109,17 +111,17 @@ buildUI wenv model = widgetTree where
     , hstack
       [ label "Output" `styleBasic` [textFont "Monotype"]
       , spacer
-      , optionButton_ "U'mista" OUmista (outputOrth) [onClick AppRefresh]
+      , tooltipK ttUmista   $ optionButton_ "U'mista" OUmista (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton_ "NAPA" ONapa (outputOrth) [onClick AppRefresh]
+      , tooltipK ttNapa     $ optionButton_ "NAPA" ONapa (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton_ "Grubb" OGrubb (outputOrth) [onClick AppRefresh]
+      , tooltipK ttGrubb    $ optionButton_ "Grubb" OGrubb (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton_ "Boas" OBoas (outputOrth) [onClick AppRefresh]
+      , tooltipK ttBoas'    $ optionButton_ "Boas" OBoas (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton_ "Georgian" OGeorgian (outputOrth) [onClick AppRefresh]
+      , tooltipK ttGeorgian $ optionButton_ "Georgian" OGeorgian (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton_ "IPA" OIpa (outputOrth) [onClick AppRefresh]
+      , tooltipK ttIpa      $ optionButton_ "IPA" OIpa (outputOrth) [onClick AppRefresh]
       ]
     , spacer
     , hgrid_ [childSpacing_ 8]

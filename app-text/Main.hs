@@ -218,7 +218,7 @@ main = do
       appFontDef "Universal" "./assets/fonts/KurintoSans-Rg.ttf",
       appFontDef "Georgian" "./assets/fonts/NotoSansGeorgian-Regular.ttf",
       appFontDef "Umista" "./assets/fonts/DoulosSIL-Regular.ttf",
-      appFontDef "NAPA" "./assets/fonts/DoulosSIL-Regular.ttf",
+      appFontDef "NAPA"  "./assets/fonts/DoulosSIL-Regular.ttf",
       appFontDef "Boas" "./assets/fonts/KurintoSans-Rg.ttf",
       appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appInitEvent AppInit

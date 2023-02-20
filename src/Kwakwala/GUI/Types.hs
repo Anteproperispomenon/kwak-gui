@@ -62,7 +62,9 @@ decodeKwakwalaD _ ONapa     = decodeToNapa
 decodeKwakwalaD _ OBoas     = decodeToPseudoBoas
 decodeKwakwalaD _ OGeorgian = decodeToGeorgianTitle
 decodeKwakwalaD kcm OGrubb
+  | (_kcmGrubbUseJ kcm && _kcmGrubbUse' kcm) = decodeToGrubbAsciiJX
   | (_kcmGrubbUseJ kcm) = decodeToGrubbAsciiJ
+  | (_kcmGrubbUse' kcm) = decodeToGrubbAsciiX
   | otherwise           = decodeToGrubbAscii
 decodeKwakwalaD kcm OIpa
   | (_kcmIpaTies kcm) = decodeToIpa

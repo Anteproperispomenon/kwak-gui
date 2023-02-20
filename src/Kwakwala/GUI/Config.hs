@@ -5,6 +5,7 @@
 module Kwakwala.GUI.Config
   ( KwakConfigModel(..)
   , kcmGrubbUseJ
+  , kcmGrubbUse'
   , kcmIpaTies
   , kwakConfigWidget
   , kwakConfigWidgetX
@@ -22,12 +23,14 @@ import Monomer
 -- that are used.
 data KwakConfigModel = KwakConfigModel
   { _kcmGrubbUseJ :: Bool
+  , _kcmGrubbUse' :: Bool -- Keep glottal stops at word start.
   , _kcmIpaTies :: Bool
   } deriving (Eq, Show)
 
 instance Default KwakConfigModel where
   def = KwakConfigModel
     { _kcmGrubbUseJ = True
+    , _kcmGrubbUse' = False
     , _kcmIpaTies = True
     }
 
@@ -40,15 +43,23 @@ makeLenses 'KwakConfigModel
 -- | Create a node for a config widget
 kwakConfigWidget :: WidgetEvent e => ALens' s KwakConfigModel -> (KwakConfigEvent -> e) -> WidgetNode s e
 kwakConfigWidget mdlLens f = vscroll $ vstack
-  [ labeledCheckbox "Use 'J' to represent the phoneme /h/ in Grubb" ((cloneLens mdlLens) . kcmGrubbUseJ)
-  , labeledCheckbox "Use ties for affricates in IPA" ((cloneLens mdlLens) . kcmIpaTies)
+  [ label "Grubb" `styleBasic` [textSize 20, textCenter]
+  , labeledCheckbox "Use 'J' to represent the phoneme /h/" ((cloneLens mdlLens) . kcmGrubbUseJ)
+  , labeledCheckbox "Include glottal stops before vowels at the start of a word" ((cloneLens mdlLens) . kcmGrubbUse')
+  , spacer
+  , label "IPA" `styleBasic` [textSize 20, textCenter]
+  , labeledCheckbox "Use ties for affricates" ((cloneLens mdlLens) . kcmIpaTies)
   ]
 
 -- | Same as `kwakConfigWidget`, but doesn't
 -- raise any events on its own.
 kwakConfigWidgetX :: WidgetEvent e => ALens' s KwakConfigModel -> WidgetNode s e
 kwakConfigWidgetX mdlLens = vscroll $ vstack
-  [ labeledCheckbox "Use 'J' to represent the phoneme /h/ in Grubb" ((cloneLens mdlLens) . kcmGrubbUseJ)
-  , labeledCheckbox "Use ties for affricates in IPA" ((cloneLens mdlLens) . kcmIpaTies)
+  [ label "Grubb" `styleBasic` [textSize 20, textCenter]
+  , labeledCheckbox "Use 'J' to represent the phoneme /h/" ((cloneLens mdlLens) . kcmGrubbUseJ)
+  , labeledCheckbox "Include glottal stops before vowels at the start of a word" ((cloneLens mdlLens) . kcmGrubbUse')
+  , spacer
+  , label "IPA" `styleBasic` [textSize 20, textCenter]
+  , labeledCheckbox "Use ties for affricates" ((cloneLens mdlLens) . kcmIpaTies)
   ]
 

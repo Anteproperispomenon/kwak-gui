@@ -14,6 +14,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Monomer
+import Monomer.Common.BasicTypes
 import TextShow
 
 import Kwakwala.GUI.Config
@@ -103,7 +104,7 @@ buildUI wenv model = widgetTree where
       , tooltipK ttGeorgian $ optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppRefreshI]
       ]
     , spacer
-    , popup_ configVis [popupAlignToWindow, alignTop, alignCenter] $ 
+    , popup_ configVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30})] $ 
         box $ vstack
           -- [ kwakConfigWidgetX (kwakConfig . iniValueL)
           [ kwakConfigWidgetX kwakConfig

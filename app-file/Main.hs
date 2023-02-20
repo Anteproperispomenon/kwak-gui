@@ -108,7 +108,7 @@ buildUI wenv model = widgetTree where
           -- [ kwakConfigWidgetX (kwakConfig . iniValueL)
           [ kwakConfigWidgetX kwakConfig
           , button "Done" AppDoneConfig
-          ] `styleBasic` [bgColor dimGray, padding 10]
+          ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
     , hstack
       [ label "Output" `styleBasic` [textFont "Monotype"]
       , spacer

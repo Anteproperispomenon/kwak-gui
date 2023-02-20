@@ -82,7 +82,7 @@ buildUI wenv model = widgetTree where
         vstack
           [ kwakConfigWidgetX kwakConfig
           , button "Done" AppDoneConfig
-          ] `styleBasic` [bgColor dimGray, padding 10]
+          ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
     , spacer
     , hstack
       [ label "Input " `styleBasic` [textFont "Monotype"]

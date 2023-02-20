@@ -55,11 +55,14 @@ kwakConfigWidget mdlLens f = vscroll $ vstack
 -- raise any events on its own.
 kwakConfigWidgetX :: WidgetEvent e => ALens' s KwakConfigModel -> WidgetNode s e
 kwakConfigWidgetX mdlLens = vscroll $ vstack
-  [ label "Grubb" `styleBasic` [textSize 20, textCenter]
+  [ label "Orthography Settings" `styleBasic` [textSize 24, textCenter]
+  , spacer
+  , label "Grubb" `styleBasic` [textSize 20, textCenter]
   , labeledCheckbox "Use 'J' to represent the phoneme /h/" ((cloneLens mdlLens) . kcmGrubbUseJ)
   , labeledCheckbox "Include glottal stops before vowels at the start of a word" ((cloneLens mdlLens) . kcmGrubbUse')
   , spacer
   , label "IPA" `styleBasic` [textSize 20, textCenter]
   , labeledCheckbox "Use ties for affricates" ((cloneLens mdlLens) . kcmIpaTies)
   ]
+
 

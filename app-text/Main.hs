@@ -78,7 +78,7 @@ buildUI wenv model = widgetTree where
       , button "Config" AppOpenConfig
       ]
     , spacer
-    , popup_ configVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30})] $
+    , popup_ configVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $
         vstack
           [ kwakConfigWidgetX kwakConfig
           , button "Done" AppDoneConfig

@@ -104,7 +104,7 @@ buildUI wenv model = widgetTree where
       , tooltipK ttGeorgian $ optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppRefreshI]
       ]
     , spacer
-    , popup_ configVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30})] $ 
+    , popup_ configVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $ 
         box $ vstack
           -- [ kwakConfigWidgetX (kwakConfig . iniValueL)
           [ kwakConfigWidgetX kwakConfig

@@ -10,6 +10,7 @@ module Kwakwala.GUI.Types
 import Data.Text (Text)
 import TextShow
 
+import Kwakwala.GUI.Config (KwakConfigModel(..))
 import Kwakwala.Parsers
 import Kwakwala.Output
 import Kwakwala.Sounds
@@ -48,20 +49,26 @@ instance TextShow OutputOrth where
   showb OBoas = "OBoas"
   showb OIpa = "OIpa"
     
-parseKwakwalaD :: InputOrth -> Text -> [CasedChar]
-parseKwakwalaD IUmista   = encodeFromUmista
-parseKwakwalaD INapa     = encodeFromNapa
-parseKwakwalaD IGrubb    = encodeFromGrubbAscii
-parseKwakwalaD IBoas     = encodeFromBoas
-parseKwakwalaD IGeorgian = encodeFromGeorgian
+parseKwakwalaD :: KwakConfigModel -> InputOrth -> Text -> [CasedChar]
+parseKwakwalaD _ IUmista   = encodeFromUmista
+parseKwakwalaD _ INapa     = encodeFromNapa
+parseKwakwalaD _ IGrubb    = encodeFromGrubbAscii
+parseKwakwalaD _ IBoas     = encodeFromBoas
+parseKwakwalaD _ IGeorgian = encodeFromGeorgian
 
-decodeKwakwalaD :: OutputOrth -> [CasedChar] -> Text
-decodeKwakwalaD OUmista   = decodeToUmista
-decodeKwakwalaD ONapa     = decodeToNapa
-decodeKwakwalaD OGrubb    = decodeToGrubbAsciiJ -- for now
-decodeKwakwalaD OBoas     = decodeToPseudoBoas
-decodeKwakwalaD OIpa      = decodeToIpa
-decodeKwakwalaD OGeorgian = decodeToGeorgianTitle
+decodeKwakwalaD :: KwakConfigModel -> OutputOrth -> [CasedChar] -> Text
+decodeKwakwalaD _ OUmista   = decodeToUmista
+decodeKwakwalaD _ ONapa     = decodeToNapa
+decodeKwakwalaD _ OBoas     = decodeToPseudoBoas
+decodeKwakwalaD _ OGeorgian = decodeToGeorgianTitle
+decodeKwakwalaD kcm OGrubb
+  | (_kcmGrubbUseJ kcm && _kcmGrubbUse' kcm) = decodeToGrubbAsciiJX
+  | (_kcmGrubbUseJ kcm) = decodeToGrubbAsciiJ
+  | (_kcmGrubbUse' kcm) = decodeToGrubbAsciiX
+  | otherwise           = decodeToGrubbAscii
+decodeKwakwalaD kcm OIpa
+  | (_kcmIpaTies kcm) = decodeToIpa
+  | otherwise         = decodeToIpaAlt
 
 orthI2O :: InputOrth -> OutputOrth
 orthI2O IUmista = OUmista

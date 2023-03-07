@@ -7,13 +7,20 @@ module Main where
 import Control.Exception
 import Control.Lens
 import Data.ByteString qualified as BS
+import Data.Default (def)
+import Data.Ini.Config.Bidir
 import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Monomer
+import Monomer.Common.BasicTypes
 import TextShow
 
+import Kwakwala.GUI.Config
+import Kwakwala.GUI.Config.File
+import Kwakwala.GUI.Config.Parsing
+import Kwakwala.GUI.Info
 import Kwakwala.GUI.Types
 
 import qualified Monomer.Lens as L
@@ -36,16 +43,20 @@ import Kwakwala.Sounds
 data AppModel = AppModel 
   { _inputOrth  :: InputOrth
   , _outputOrth :: OutputOrth
-  , _inputFile :: Text
+  , _inputFile  :: Text
   , _outputFile :: Text
-  , _inputText :: Text
+  , _inputText  :: Text
   , _outputText :: Text
   , _currentDir :: Text -- Current Working Directory
   , _overwriteConfVis :: Bool
   , _errorAlertVis :: Bool
   , _writeSuccessVis :: Bool
   , _openErrorVis :: Bool
+  , _configVis :: Bool
   , _errorMsg :: Text
+  , _kwakConfig :: KwakConfigModel
+  , _cfgFilePath :: FilePath
+  -- , _kwakConfig :: Ini KwakConfigModel
   } deriving (Eq, Show)
 
 data AppEvent
@@ -65,6 +76,8 @@ data AppEvent
   | AppWriteError Text
   | AppOverWrite -- when the user agrees to overwrite a file.
   | AppClosePopups
+  | AppDoneConfig
+  | AppOpenConfig
   deriving (Eq, Show)
 
 makeLenses 'AppModel
@@ -75,34 +88,42 @@ buildUI
   -> WidgetNode AppModel AppEvent
 buildUI wenv model = widgetTree where
   widgetTree = vstack 
-    [ hstack
+    [ button "Config" AppOpenConfig
+    , spacer
+    , hstack
       [ label "Input " `styleBasic` [textFont "Monotype"]
       , spacer
-      , optionButton_ "U'mista" IUmista (inputOrth) [onClick AppRefreshI]
+      , tooltipK ttUmista   $ optionButton_ "U'mista" IUmista (inputOrth) [onClick AppRefreshI]
       , spacer
-      , optionButton_ "NAPA" INapa (inputOrth) [onClick AppRefreshI]
+      , tooltipK ttNapa     $ optionButton_ "NAPA" INapa (inputOrth) [onClick AppRefreshI]
       , spacer
-      , optionButton_ "Grubb" IGrubb (inputOrth) [onClick AppRefreshI]
+      , tooltipK ttGrubb    $ optionButton_ "Grubb" IGrubb (inputOrth) [onClick AppRefreshI]
       , spacer
-      , optionButton_ "Boas" IBoas (inputOrth) [onClick AppRefreshI]
+      , tooltipK ttBoas     $ optionButton_ "Boas" IBoas (inputOrth) [onClick AppRefreshI]
       , spacer
-      , optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppRefreshI]
+      , tooltipK ttGeorgian $ optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppRefreshI]
       ]
     , spacer
+    , popup_ configVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $ 
+        box $ vstack
+          -- [ kwakConfigWidgetX (kwakConfig . iniValueL)
+          [ kwakConfigWidgetX kwakConfig
+          , button "Done" AppDoneConfig
+          ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
     , hstack
       [ label "Output" `styleBasic` [textFont "Monotype"]
       , spacer
-      , optionButton_ "U'mista" OUmista (outputOrth) [onClick AppRefresh]
+      , tooltipK ttUmista   $ optionButton_ "U'mista" OUmista (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton_ "NAPA" ONapa (outputOrth) [onClick AppRefresh]
+      , tooltipK ttNapa     $ optionButton_ "NAPA" ONapa (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton_ "Grubb" OGrubb (outputOrth) [onClick AppRefresh]
+      , tooltipK ttGrubb    $ optionButton_ "Grubb" OGrubb (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton_ "Boas" OBoas (outputOrth) [onClick AppRefresh]
+      , tooltipK ttBoas'    $ optionButton_ "Boas" OBoas (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton_ "Georgian" OGeorgian (outputOrth) [onClick AppRefresh]
+      , tooltipK ttGeorgian $ optionButton_ "Georgian" OGeorgian (outputOrth) [onClick AppRefresh]
       , spacer
-      , optionButton_ "IPA" OIpa (outputOrth) [onClick AppRefresh]
+      , tooltipK ttIpa      $ optionButton_ "IPA" OIpa (outputOrth) [onClick AppRefresh]
       ]
     , spacer
     , hgrid_ [childSpacing_ 8]
@@ -125,7 +146,7 @@ buildUI wenv model = widgetTree where
     , spacer
     , button "Save File" AppWriteFile
     , popup overwriteConfVis (confirmMsg "File already Exists. Overwrite?" AppOverWrite AppClosePopups)
-    , popup errorAlertVis (alertMsg (model ^. errorMsg) AppClosePopups)
+    , popup errorAlertVis (alertMsg (model ^. errorMsg) AppClosePopups) `styleBasic` [textFont "Monotype"]
     , popup writeSuccessVis (alertMsg "File Saved Successfully." AppClosePopups)
     , popup openErrorVis (alertMsg "Could not open requested file." AppClosePopups)
     ] `styleBasic` [padding 10]
@@ -154,8 +175,12 @@ handleEvent wenv node model evt = case evt of
   AppOverWrite -> [Task $ overWriteFileTask (T.unpack (model ^. outputFile)) (model ^. outputText), Model (model & overwriteConfVis .~ False)] 
   AppRefresh  -> [Model (model & outputText .~ getConversion (model ^. inputText))]
   AppRefreshI -> [Model (model & outputText .~ getConversion (model ^. inputText) & inputText %~ modText)]
-  AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False & openErrorVis .~ False)]
+  AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False & openErrorVis .~ False & configVis .~ False)]
   (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
+  AppDoneConfig -> [Event AppRefresh, Model (model & configVis .~ False), Task $ writeConfigTask (model ^. cfgFilePath) (model ^. kwakConfig)]
+  -- AppDoneConfig -> let newCfg = selfUpdate (model ^. kwakConfig)
+  --   in [Model (model & configVis .~ False & kwakConfig .~ newCfg)] -- Add task here to update config file.
+  AppOpenConfig -> [Model (model & configVis .~ True )]
   where 
     handleFile1 :: Maybe [Text] -> AppEvent
     handleFile1 Nothing = AppNull
@@ -168,7 +193,8 @@ handleEvent wenv node model evt = case evt of
     getConversion inpTxt = let 
       inpO = model ^. inputOrth
       outO = model ^. outputOrth
-      in decodeKwakwalaD outO $ parseKwakwalaD inpO inpTxt
+      kcm  = model ^. kwakConfig
+      in decodeKwakwalaD kcm outO $ parseKwakwalaD kcm inpO inpTxt
     inpDir :: Text
     inpDir = case (model ^. inputFile) of
       ""  -> ""
@@ -181,6 +207,10 @@ handleEvent wenv node model evt = case evt of
     -- space at the end. This is to trigger a render
     -- update, so that the widget will use the new
     -- font specified in its style.
+    -- Note: might want to have two copies
+    -- of the input text in the model, one that
+    -- is left unmodified, and one that is 
+    -- modified and displayed.
     modText :: Text -> Text
     modText txt = case (T.unsnoc txt) of
       Nothing -> " "
@@ -198,13 +228,19 @@ writeFileTask fp txt = do
         Left x   -> return (AppWriteError $ T.pack (show x))
         Right () -> return AppWriteSuccess
 
-
 overWriteFileTask :: FilePath -> Text -> IO AppEvent
 overWriteFileTask fp txt = do
   eEvt <- try @SomeException (TU.writeFile fp txt)
   case eEvt of
     Left x   -> return (AppWriteError $ T.pack (show x))
     Right () -> return AppWriteSuccess
+
+writeConfigTask :: FilePath -> KwakConfigModel -> IO AppEvent
+writeConfigTask fp kcm = do
+  rslt <- updateConfigFile' fp kcm
+  case rslt of
+    Just err -> return $ AppWriteError ("Error writing config file:\n" <> err)
+    Nothing  -> return AppNull
 
 -- KurintoSansAux-Rg.ttf
 
@@ -232,7 +268,8 @@ readFileMaybe fp = do
 
 main :: IO ()
 main = do
-  startApp model handleEvent buildUI config
+  (cfgFile, eConf) <- findAndCreateConf
+  startApp (model' cfgFile eConf) handleEvent buildUI config
   where
     config = [
       appWindowTitle "Kwak'wala Orthography Conversion (File)",
@@ -250,4 +287,11 @@ main = do
       appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appInitEvent AppInit
       ]
-    model = AppModel IUmista OUmista "" "" "" "" "" False False False False ""
+    -- model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def cfgFile
+    -- Not using Ini in Model version:
+    model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt def cfgFile
+    model' cfgFile (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" (getIniValue iniX) cfgFile
+    -- Using Ini in Model version:
+    -- defIni = ini def configSpec
+    -- model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni cfgFile
+    -- model' cfgFile (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" iniX cfgFile

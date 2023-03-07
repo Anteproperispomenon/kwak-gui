@@ -276,8 +276,6 @@ main = do
       appWindowIcon "./assets/images/icon.png",
       appTheme darkTheme,
       appFontDef "Regular" "./assets/fonts/Roboto-Regular.ttf",
-      -- appFontDef "Universal" "./assets/fonts/LiberationSans-Regular.ttf",
-      -- appFontDef "Universal" "./assets/fonts/KurintoSansAux-Rg.ttf",
       appFontDef "Monotype" "./assets/fonts/LiberationMono-Regular.ttf",
       appFontDef "Universal" "./assets/fonts/KurintoSans-Rg.ttf",
       appFontDef "Georgian" "./assets/fonts/NotoSansGeorgian-Regular.ttf",

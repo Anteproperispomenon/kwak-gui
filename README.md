@@ -3,6 +3,9 @@
 This repository contains two GUI applications to make using [kwak-orth](https://github.com/Anteproperispomenon/kwak-orth) 
 easier. 
 
+If you have a pre-compiled version of this program, you can skip ahead to the 'Usage' section
+for information on how to use the programs.
+
 ## Compiling
 
 Unfortunately, compiling can be a pain. First, you'll have to install Haskell and stack, for which there are instructions
@@ -107,5 +110,77 @@ from the user).
 I haven't yet tried compiling `kwak-gui` on linux or other unix-like systems
 yet, but judging from WSL/Ubuntu, programs run in the directory they were
 started in, so you shouldn't have to create shell scripts to run the programs
-like you would on MacOS.
+like you would on Mac OS.
+
+## Usage
+
+If you're compiling the repository, read the 'Running' section to figure out
+how to run the program easily. If you have a pre-compiled version of the
+program, you can ignore the 'Running' section. 
+
+There are two executable files: `kwak-gui-file(.exe)` and `kwak-gui-text(.exe)`
+(on Mac there are `.command` files). Use `kwak-gui-file` when you want to convert
+plain-text files between orthographies. Use `kwak-gui-text` if you want to type in
+your text directly or copy-and-paste text in and out.
+
+### Common Features
+
+Near the top, there are two lines of buttons. The `input` line is what orthography
+your input text/file is in. The `output` line is what orthography you want the output
+to be. You can mouse over each orthography button to get a short description of
+the orthography in question.
+
+If you wish to normalise/clean up some text, just select the same orthography for
+both the input and output.
+
+Also, there is a `config` button at the top/top-right. This has options that slightly
+alter the output of the various orthographies. These options persist between uses
+of the program, and between the two programs.
+
+### Text-Based
+
+In this version, there are two text boxes for the input and output. The box on the
+left is where you type/paste text that you want converted.
+
+If you want your text to be automatically converted, you can check the `Auto-Convert`
+box at the top-right for text to be converted as you type/paste. If you don't turn
+auto-convert on, you'll have to click `Convert` at the bottom to convert the text.
+You can then click on `Copy` to copy the output text to your clipboard.
+
+There is also a `Swap` button you can click that will swap the input/output orthography
+and text. 
+
+### File-Based
+
+This version is intended for converting plain-text files directly to other orthographies.
+As in the text-based version, this version contains two text boxes that represent the
+input and output, but they are for display only, and cannot be edited. It also contains
+two small text boxes that show the locations of the files you are working with.
+
+#### Selecting File to Convert
+
+To select the file you wish to convert, click `Select File` on the left side of the window.
+This will open a system window where you can browse your computer for the file you are
+looking for. Since this uses the system's `Open File` window, the interface will vary
+depending on your operating system.
+
+Note that this only works with plain-text files (i.e. `.txt` files in most cases); it
+won't work with Microsoft Word files (i.e. `.doc` or `.docx` files) or any other 
+formatted text files (e.g. `.rtf`, `.odt`, `.html`, etc...). It also requires that the
+text files be in UTF-8 format. This shouldn't be a problem, since most modern operating 
+systems use UTF-8 as the default encoding scheme. If you get an error opening a `.txt` file
+, try opening the text file in Notepad (on Windows), and clicking `File > Save as`. Then, 
+in the `Encoding` drop down, select `UTF-8` (**not** `UTF-8 with BOM`), and then save the
+file to a different name. If it still doesn't work, you'll want to use the Text-Based
+version instead, and just copy the text in, convert it, and copy it to the file you
+want to output it to.
+
+#### Selecting Output File
+
+To save the output to a file, first you must click `Choose Destination` to select where
+you want to save the file. This opens your system's `Save File` window, which will ask
+you to select a name and location for the output file. Note that this does **not**
+actually save the file, even though it looks like it does. To save the file, you must
+then click on `Save File` at the bottom of the main window. Note that this awkward process
+will likely change in a future version, but will stay as-is for now.
 

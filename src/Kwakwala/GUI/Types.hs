@@ -60,7 +60,7 @@ decodeKwakwalaD :: KwakConfigModel -> OutputOrth -> [CasedChar] -> Text
 decodeKwakwalaD _ OUmista   = decodeToUmista
 decodeKwakwalaD _ ONapa     = decodeToNapa
 decodeKwakwalaD _ OBoas     = decodeToPseudoBoas
-decodeKwakwalaD _ OGeorgian = decodeToGeorgianTitle
+decodeKwakwalaD kcm OGeorgian = decodeToGeorgianC (_kcmGeorgianCfg kcm)
 decodeKwakwalaD kcm OGrubb
   | (_kcmGrubbUseJ kcm && _kcmGrubbUse' kcm) = decodeToGrubbAsciiJX
   | (_kcmGrubbUseJ kcm) = decodeToGrubbAsciiJ

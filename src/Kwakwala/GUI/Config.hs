@@ -4,9 +4,15 @@
 
 module Kwakwala.GUI.Config
   ( KwakConfigModel(..)
+  -- * Lenses
   , kcmGrubbUseJ
   , kcmGrubbUse'
   , kcmIpaTies
+  , kcmGeorgianCfg
+  -- ** uh...
+  , gocUseLabSign
+  , gocUsePalSign
+  -- * Widgets
   , kwakConfigWidget
   , kwakConfigWidgetX
   ) where
@@ -17,6 +23,8 @@ import Data.Default
 import Data.Text (Text)
 import Data.Text qualified as T
 
+import Kwakwala.Output
+
 import Monomer
 
 -- | A model for the types of config
@@ -25,6 +33,7 @@ data KwakConfigModel = KwakConfigModel
   { _kcmGrubbUseJ :: Bool
   , _kcmGrubbUse' :: Bool -- Keep glottal stops at word start.
   , _kcmIpaTies :: Bool
+  , _kcmGeorgianCfg :: GeorgianOutputConfig
   } deriving (Eq, Show)
 
 instance Default KwakConfigModel where
@@ -32,6 +41,7 @@ instance Default KwakConfigModel where
     { _kcmGrubbUseJ = True
     , _kcmGrubbUse' = False
     , _kcmIpaTies = True
+    , _kcmGeorgianCfg = (GeorgianOutputConfig False False)
     }
 
 data KwakConfigEvent
@@ -40,6 +50,8 @@ data KwakConfigEvent
 
 makeLenses 'KwakConfigModel
 
+makeLenses 'GeorgianOutputConfig
+
 -- | Create a node for a config widget
 kwakConfigWidget :: WidgetEvent e => ALens' s KwakConfigModel -> (KwakConfigEvent -> e) -> WidgetNode s e
 kwakConfigWidget mdlLens f = vstack $
@@ -47,11 +59,18 @@ kwakConfigWidget mdlLens f = vstack $
    , spacer
    , vscroll $ vstack
        [ label "Grubb" `styleBasic` [textSize 20, textCenter]
-       , labeledCheckbox "Use 'J' to represent the phoneme /h/" ((cloneLens mdlLens) . kcmGrubbUseJ)
-       , labeledCheckbox "Include glottal stops before vowels at the start of a word" ((cloneLens mdlLens) . kcmGrubbUse')
+       , spacer
+       , labeledCheckbox_ "Use 'J' to represent the phoneme /h/" ((cloneLens mdlLens) . kcmGrubbUseJ) [textRight]
+       , labeledCheckbox_ "Include glottal stops before vowels at the start of a word" ((cloneLens mdlLens) . kcmGrubbUse') [textRight]
        , spacer
        , label "IPA" `styleBasic` [textSize 20, textCenter]
-       , labeledCheckbox "Use ties for affricates" ((cloneLens mdlLens) . kcmIpaTies)
+       , spacer
+       , labeledCheckbox_ "Use ties for affricates" ((cloneLens mdlLens) . kcmIpaTies) [textRight]
+       , spacer
+       , label "Georgian" `styleBasic` [textSize 20, textCenter]
+       , spacer
+       , labeledCheckbox_ "Use Abkhaz labialisation mark" ((cloneLens mdlLens) . kcmGeorgianCfg . gocUseLabSign) [textRight]
+       , labeledCheckbox_ "Use Abkhaz hard mark to indicate palatalisation of velara consonants" ((cloneLens mdlLens) . kcmGeorgianCfg . gocUsePalSign) [textRight]
        ]
    ] 
 
@@ -63,11 +82,18 @@ kwakConfigWidgetX mdlLens = vstack $
    , spacer
    , vscroll $ vstack
        [ label "Grubb" `styleBasic` [textSize 20, textCenter]
-       , labeledCheckbox "Use 'J' to represent the phoneme /h/" ((cloneLens mdlLens) . kcmGrubbUseJ)
-       , labeledCheckbox "Include glottal stops before vowels at the start of a word" ((cloneLens mdlLens) . kcmGrubbUse')
+       , spacer
+       , labeledCheckbox_ "Use 'J' to represent the phoneme /h/" ((cloneLens mdlLens) . kcmGrubbUseJ) [textRight]
+       , labeledCheckbox_ "Include glottal stops before vowels at the start of a word" ((cloneLens mdlLens) . kcmGrubbUse') [textRight]
        , spacer
        , label "IPA" `styleBasic` [textSize 20, textCenter]
-       , labeledCheckbox "Use ties for affricates" ((cloneLens mdlLens) . kcmIpaTies)
+       , spacer
+       , labeledCheckbox_ "Use ties for affricates" ((cloneLens mdlLens) . kcmIpaTies) [textRight]
+       , spacer
+       , label "Georgian" `styleBasic` [textSize 20, textCenter]
+       , spacer
+       , labeledCheckbox_ "Use Abkhaz labialisation mark" ((cloneLens mdlLens) . kcmGeorgianCfg . gocUseLabSign) [textRight]
+       , labeledCheckbox_ "Use Abkhaz hard mark to indicate palatalisation of velara consonants" ((cloneLens mdlLens) . kcmGeorgianCfg . gocUsePalSign) [textRight]
        ]
    ] 
 

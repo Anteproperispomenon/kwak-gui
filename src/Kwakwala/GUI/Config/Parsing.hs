@@ -23,6 +23,11 @@ configSpec = do
   section "IPA" $ do
     kcmIpaTies   .= field "use-ties" bool
                       & comment ["If true, use ties for affricates in IPA."]
+  section "GEORGIAN" $ do
+    (kcmGeorgianCfg . gocUseLabSign) .= field "alt-lab" bool
+                      & comment ["If true, use the Abkhaz labialisation mark", "to represent labialisation."]
+    (kcmGeorgianCfg . gocUsePalSign) .= field "pal-vis" bool
+                      & comment ["If true, use the Abkhaz palatalisation mark", "to explicitly mark palatalisation."]
 
 parseConfig :: T.Text -> Either T.Text (Ini KwakConfigModel)
 parseConfig txt = case (parseIni txt (ini def configSpec)) of

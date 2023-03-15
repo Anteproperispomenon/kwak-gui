@@ -70,7 +70,7 @@ kwakConfigWidget mdlLens f = vstack $
        , label "Georgian" `styleBasic` [textSize 20, textCenter]
        , spacer
        , labeledCheckbox_ "Use Abkhaz labialisation mark" ((cloneLens mdlLens) . kcmGeorgianCfg . gocUseLabSign) [textRight]
-       , labeledCheckbox_ "Use Abkhaz hard mark to indicate palatalisation of velara consonants" ((cloneLens mdlLens) . kcmGeorgianCfg . gocUsePalSign) [textRight]
+       , labeledCheckbox_ "Use Abkhaz hard mark to indicate palatalisation of velar consonants" ((cloneLens mdlLens) . kcmGeorgianCfg . gocUsePalSign) [textRight]
        ]
    ] 
 
@@ -95,7 +95,7 @@ kwakConfigWidgetX mdlLens = vstack $
        , labeledCheckbox_ "Use Abkhaz labialisation mark" ((cloneLens mdlLens) . kcmGeorgianCfg . gocUseLabSign) [textRight]
        , labeledCheckbox_ "Use Abkhaz hard mark to indicate palatalisation of velara consonants" ((cloneLens mdlLens) . kcmGeorgianCfg . gocUsePalSign) [textRight]
        ]
-   ] 
+   ]
 
 {-
 -- | Same as `kwakConfigWidget`, but doesn't

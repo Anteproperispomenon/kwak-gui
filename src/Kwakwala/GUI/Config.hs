@@ -9,7 +9,7 @@ module Kwakwala.GUI.Config
   , kcmGrubbUse'
   , kcmIpaTies
   , kcmGeorgianCfg
-  -- ** uh...
+  -- ** Georgian sub-lenses
   , gocUseLabSign
   , gocUsePalSign
   -- * Widgets
@@ -93,7 +93,7 @@ kwakConfigWidgetX mdlLens = vstack $
        , label "Georgian" `styleBasic` [textSize 20, textCenter]
        , spacer
        , labeledCheckbox_ "Use Abkhaz labialisation mark" ((cloneLens mdlLens) . kcmGeorgianCfg . gocUseLabSign) [textRight]
-       , labeledCheckbox_ "Use Abkhaz hard mark to indicate palatalisation of velara consonants" ((cloneLens mdlLens) . kcmGeorgianCfg . gocUsePalSign) [textRight]
+       , labeledCheckbox_ "Use Abkhaz hard mark to indicate palatalisation of velar consonants" ((cloneLens mdlLens) . kcmGeorgianCfg . gocUsePalSign) [textRight]
        ]
    ]
 

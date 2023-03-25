@@ -7,38 +7,38 @@ packages:
 - completed:
     hackage: nanovg-0.8.1.0@sha256:9131db15822c6593aa73946b56593eb0a14a0d044395bcdfd4fe2d3e6edb6759,4742
     pantry-tree:
-      sha256: b83e640d56213061f632a76012a63625d76ceacf905bb8cee6ee03f981047c03
       size: 2558
+      sha256: b83e640d56213061f632a76012a63625d76ceacf905bb8cee6ee03f981047c03
   original:
     hackage: nanovg-0.8.1.0
 - completed:
     hackage: monomer-1.5.1.0@sha256:18e3ce60c7f5d3fae74bf5ace7515f0e252b12ccc4b71030f948e6fdc1f49a99,16741
     pantry-tree:
-      sha256: 3dde2b635d1298c3b734c0b28bae8fa4956bc2ad9ef89f81bbb04ec1eeb09d0c
       size: 14513
+      sha256: 3dde2b635d1298c3b734c0b28bae8fa4956bc2ad9ef89f81bbb04ec1eeb09d0c
   original:
     hackage: monomer-1.5.1.0
 - completed:
     hackage: tinyfiledialogs-0.2.1.0@sha256:118f9fd7b721de68f1e84c8b820784e31140bf34e32f23fd6410fb57914a309c,1905
     pantry-tree:
-      sha256: 518def606ee59dad71b77dec20a9dc55072bdd8fe2194a0ccfca2b2afee1767e
       size: 482
+      sha256: 518def606ee59dad71b77dec20a9dc55072bdd8fe2194a0ccfca2b2afee1767e
   original:
     hackage: tinyfiledialogs-0.2.1.0
 - completed:
-    commit: 4b8c38823beedd6def44993adeb2aeff6c632acb
-    git: https://github.com/Anteproperispomenon/kwak-orth.git
     name: kwak-orth
-    pantry-tree:
-      sha256: 0cb082767c7aec481884de82995d849e6d686728a639310f414d8cc89c81e26a
-      size: 7067
     version: 0.1.0.0
-  original:
-    commit: 4b8c38823beedd6def44993adeb2aeff6c632acb
     git: https://github.com/Anteproperispomenon/kwak-orth.git
+    pantry-tree:
+      size: 7067
+      sha256: 155fb7d3b6b3795d81635b81ea695fe2c9f512d56840b53f9b80343ee2bde902
+    commit: 430e13a9275855db63209ba12ef4f3d374986cb0
+  original:
+    git: https://github.com/Anteproperispomenon/kwak-orth.git
+    commit: 430e13a9275855db63209ba12ef4f3d374986cb0
 snapshots:
 - completed:
-    sha256: b37c0abab16c7de352c45b85f8ecc8530b084209a2c42987a96c92b4a5e3cd65
     size: 648924
     url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/20/13.yaml
+    sha256: b37c0abab16c7de352c45b85f8ecc8530b084209a2c42987a96c92b4a5e3cd65
   original: lts-20.13

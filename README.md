@@ -11,6 +11,9 @@ for information on how to use the programs.
 Unfortunately, compiling can be a pain. First, you'll have to install Haskell and stack, for which there are instructions
 on the [Haskell website](https://www.haskell.org/downloads/). 
 
+Note that if you are trying to compile on Apple Silicon (i.e. a newer Mac with `M1` or `M2` etc...), 
+there are more specific instructions [here](docs/apple-silicon.md).
+
 Once you have Haskell and Stack installed, next you'll have to install the dependencies for 
 [monomer](https://github.com/fjvallarino/monomer), the widget toolkit used by this program. Insructions
 on how to install them can be found at <https://github.com/fjvallarino/monomer/blob/main/docs/tutorials/00-setup.md>.
@@ -19,6 +22,7 @@ If you are having trouble installing monomer on Windows, you can try the steps I
 Once you have set up all the dependencies, you should be able to compile `kwak-gui` by running
 `stack build`. You can also compile and run one of the applicatons by running `stack run kwak-gui-text`
 or `stack run kwak-gui-file`.
+
 
 ## Running
 

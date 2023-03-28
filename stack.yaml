@@ -49,6 +49,9 @@ extra-deps:
 #- git: https://github.com/fjvallarino/monomer
 #  commit: cb17cb553c76eea97718ff3953e516868c2b7087
 
+ghc-options:
+    # "$everything": -split-sections # currently broken on windows
+
 # Override default flag values for local packages and extra-deps
 flags:
   nanovg:

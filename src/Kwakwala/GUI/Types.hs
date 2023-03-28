@@ -22,6 +22,7 @@ data InputOrth
   | IGrubb
   | IGeorgian
   | IBoas
+  | IIsland
   deriving (Show, Eq)
 
 instance TextShow InputOrth where
@@ -38,6 +39,7 @@ data OutputOrth
   | OGrubb
   | OGeorgian
   | OBoas
+  | OIsland
   | OIpa
   deriving (Show, Eq)
 
@@ -55,17 +57,19 @@ parseKwakwalaD _ INapa     = encodeFromNapa
 parseKwakwalaD _ IGrubb    = encodeFromGrubbAscii
 parseKwakwalaD _ IBoas     = encodeFromBoas
 parseKwakwalaD _ IGeorgian = encodeFromGeorgian
+parseKwakwalaD _ IIsland   = encodeFromIsland
 
 decodeKwakwalaD :: KwakConfigModel -> OutputOrth -> [CasedChar] -> Text
 decodeKwakwalaD _ OUmista   = decodeToUmista
 decodeKwakwalaD _ ONapa     = decodeToNapa
 decodeKwakwalaD _ OBoas     = decodeToPseudoBoas
-decodeKwakwalaD _ OGeorgian = decodeToGeorgianTitle
+decodeKwakwalaD kcm OGeorgian = decodeToGeorgianC (_kcmGeorgianCfg kcm)
 decodeKwakwalaD kcm OGrubb
   | (_kcmGrubbUseJ kcm && _kcmGrubbUse' kcm) = decodeToGrubbAsciiJX
   | (_kcmGrubbUseJ kcm) = decodeToGrubbAsciiJ
   | (_kcmGrubbUse' kcm) = decodeToGrubbAsciiX
   | otherwise           = decodeToGrubbAscii
+decodeKwakwalaD _ OIsland = decodeToIsland
 decodeKwakwalaD kcm OIpa
   | (_kcmIpaTies kcm) = decodeToIpa
   | otherwise         = decodeToIpaAlt
@@ -76,6 +80,7 @@ orthI2O INapa = ONapa
 orthI2O IGrubb = OGrubb
 orthI2O IGeorgian = OGeorgian
 orthI2O IBoas = OBoas
+orthI2O IIsland = OIsland
 
 orthO2I :: OutputOrth -> Maybe InputOrth
 orthO2I OUmista = Just IUmista
@@ -83,5 +88,6 @@ orthO2I ONapa = Just INapa
 orthO2I OGrubb = Just IGrubb
 orthO2I OGeorgian = Just IGeorgian
 orthO2I OBoas = Just IBoas
+orthO2I OIsland = Just IIsland
 orthO2I _ = Nothing
 

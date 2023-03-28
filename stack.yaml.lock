@@ -12,12 +12,12 @@ packages:
   original:
     hackage: nanovg-0.8.1.0
 - completed:
-    hackage: monomer-1.5.0.0@sha256:4240bdb2639a375f68517052a28ba11f377badb1e152e41a8c09d503e2c2e92d,15255
+    hackage: monomer-1.5.1.0@sha256:18e3ce60c7f5d3fae74bf5ace7515f0e252b12ccc4b71030f948e6fdc1f49a99,16741
     pantry-tree:
-      size: 14368
-      sha256: 786595e425c920a972e0d2c83ab7fcd8f2642e2c43262be737d27b5ae4c376df
+      size: 14513
+      sha256: 3dde2b635d1298c3b734c0b28bae8fa4956bc2ad9ef89f81bbb04ec1eeb09d0c
   original:
-    hackage: monomer-1.5.0.0
+    hackage: monomer-1.5.1.0
 - completed:
     hackage: tinyfiledialogs-0.2.1.0@sha256:118f9fd7b721de68f1e84c8b820784e31140bf34e32f23fd6410fb57914a309c,1905
     pantry-tree:
@@ -30,15 +30,15 @@ packages:
     version: 0.1.0.0
     git: https://github.com/Anteproperispomenon/kwak-orth.git
     pantry-tree:
-      size: 6776
-      sha256: 0816e514c576332bab2b2662a28211ada7a5719ec203024c15aadde5f3a35215
-    commit: 907792e0b4a6cc02fc73611965df0b4e2818efff
+      size: 7067
+      sha256: 155fb7d3b6b3795d81635b81ea695fe2c9f512d56840b53f9b80343ee2bde902
+    commit: 430e13a9275855db63209ba12ef4f3d374986cb0
   original:
     git: https://github.com/Anteproperispomenon/kwak-orth.git
-    commit: 907792e0b4a6cc02fc73611965df0b4e2818efff
+    commit: 430e13a9275855db63209ba12ef4f3d374986cb0
 snapshots:
 - completed:
-    size: 590102
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/27.yaml
-    sha256: 79a786674930a89301b0e908fad2822a48882f3d01486117693c377b8edffdbe
-  original: lts-18.27
+    size: 648924
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/20/13.yaml
+    sha256: b37c0abab16c7de352c45b85f8ecc8530b084209a2c42987a96c92b4a5e3cd65
+  original: lts-20.13

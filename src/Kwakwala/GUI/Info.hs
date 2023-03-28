@@ -18,6 +18,7 @@ module Kwakwala.GUI.Info
   , ttIpa
   , ttBoas
   , ttBoas'
+  , ttIsland
   ) where
 
 import Data.Text qualified as T
@@ -49,3 +50,6 @@ ttBoas = "Input for Boas's original orthography."
 
 ttBoas' :: Text
 ttBoas' = "Output orthography based on Boas's original orthography."
+
+ttIsland :: Text
+ttIsland = "\"Orthography\" for the \"Island\" font to represent NAPA."

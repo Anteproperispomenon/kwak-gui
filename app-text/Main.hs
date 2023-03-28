@@ -96,6 +96,8 @@ buildUI wenv model = widgetTree where
       , tooltipK ttBoas     $ optionButton_ "Boas" IBoas (inputOrth) [onClick AppChange]
       , spacer
       , tooltipK ttGeorgian $ optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppChange]
+      , spacer
+      , tooltipK ttIsland   $ optionButton_ "Island" IIsland (inputOrth) [onClick AppChange]
       ]
     , spacer
     , hstack
@@ -110,6 +112,8 @@ buildUI wenv model = widgetTree where
       , tooltipK ttBoas'    $ optionButton_ "Boas" OBoas (outputOrth) [onClick AppChange]
       , spacer
       , tooltipK ttGeorgian $ optionButton_ "Georgian" OGeorgian (outputOrth) [onClick AppChange]
+      , spacer
+      , tooltipK ttIsland   $ optionButton_ "Island" OIsland (outputOrth) [onClick AppChange]
       , spacer
       , tooltipK ttIpa      $ optionButton_ "IPA" OIpa (outputOrth) [onClick AppChange]
       ]
@@ -193,6 +197,7 @@ selectFontI INapa     = "NAPA"
 selectFontI IGrubb    = "Universal"
 selectFontI IGeorgian = "Georgian"
 selectFontI IBoas     = "Boas"
+selectFontI IIsland   = "Island"
 
 selectFontO :: OutputOrth -> Font
 selectFontO OUmista   = "Umista"
@@ -200,6 +205,7 @@ selectFontO ONapa     = "NAPA"
 selectFontO OGrubb    = "Universal"
 selectFontO OGeorgian = "Georgian"
 selectFontO OBoas     = "Boas"
+selectFontO OIsland   = "Island"
 selectFontO OIpa      = "IPA"  
 
 main :: IO ()
@@ -219,6 +225,7 @@ main = do
       appFontDef "NAPA"  "./assets/fonts/DoulosSIL-Regular.ttf",
       appFontDef "Boas" "./assets/fonts/KurintoSans-Rg.ttf",
       appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
+      appFontDef "Island" "./assets/fonts/island.ttf",
       appInitEvent AppInit
       ]
     -- model  = AppModel IUmista OUmista "" "" False OUmista False False "" def fp

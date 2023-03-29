@@ -23,6 +23,9 @@ import Kwakwala.GUI.Config.Parsing
 import Kwakwala.GUI.Info
 import Kwakwala.GUI.Types
 
+import Kwakwala.GUI.Hidden
+import Kwakwala.GUI.Widgets.SaveFile
+
 import qualified Monomer.Lens as L
 
 import Monomer.Widgets.Containers.Scroll
@@ -53,8 +56,10 @@ data AppModel = AppModel
   , _writeSuccessVis :: Bool
   , _openErrorVis :: Bool
   , _configVis :: Bool
+  , _sfmVis    :: Bool
   , _errorMsg :: Text
   , _kwakConfig :: KwakConfigModel
+  , _sfmHidden :: HiddenVal SaveFileModel
   , _cfgFilePath :: FilePath
   -- , _kwakConfig :: Ini KwakConfigModel
   } deriving (Eq, Show)
@@ -65,6 +70,7 @@ data AppEvent
   | AppSetOutput Text
   | AppOpenFile -- triggers dialog
   | AppSaveFile -- triggers dialog
+  | AppSaveFileMan -- triggers manual output
   | AppWriteFile -- Actually writes content to file
   | AppGotInput (Maybe Text)
   | AppRefresh -- Refresh Output
@@ -112,6 +118,9 @@ buildUI wenv model = widgetTree where
           [ kwakConfigWidgetX kwakConfig
           , button "Done" AppDoneConfig
           ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
+    , popup_ sfmVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $ 
+        box (selectSaveFileH sfmHidden inputFile convertSFEvent)
+          `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
     , hstack
       [ label "Output" `styleBasic` [textFont "Monotype"]
       , spacer
@@ -140,7 +149,17 @@ buildUI wenv model = widgetTree where
         ]
       -- , spacer
       , vstack
-        [ button "Choose Destination" AppSaveFile
+        [ hstack 
+           [ button_ "Choose Destination" AppSaveFile [resizeFactorW 0] 
+           , spacer
+           , button "(Manual)" AppSaveFileMan
+           ]
+        {-   
+        [ hsplit
+           ( button "Choose Destination" AppSaveFile -- [resizeFactorW 0] 
+           , button "(Manual)" AppSaveFileMan
+           )
+        -}
         , spacer
         , (textField_ outputFile [readOnly])
         , spacer
@@ -166,9 +185,10 @@ handleEvent wenv node model evt = case evt of
   AppNull -> []
   -- AppIncrease -> [Model (model & clickCount +~ 1)]
   (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm), Task $ AppGotInput <$> readFileMaybe (T.unpack fnm)]
-  (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm)]
+  (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm & sfmVis .~ False)]
   AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" ["*.txt", "*.*"] "Text Files" False]
   AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) ["*.txt", "*.*"] "Text Files"]
+  AppSaveFileMan -> [Model (model & sfmVis .~ True)]
   AppGotInput mtxt -> case mtxt of
      (Just txt) -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
      Nothing    -> [Model (model & openErrorVis .~ True)]
@@ -179,7 +199,7 @@ handleEvent wenv node model evt = case evt of
   AppOverWrite -> [Task $ overWriteFileTask (T.unpack (model ^. outputFile)) (model ^. outputText), Model (model & overwriteConfVis .~ False)] 
   AppRefresh  -> [Model (model & outputText .~ getConversion (model ^. inputText))]
   AppRefreshI -> [Model (model & outputText .~ getConversion (model ^. inputText) & inputText %~ modText)]
-  AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False & openErrorVis .~ False & configVis .~ False)]
+  AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False & openErrorVis .~ False & configVis .~ False & sfmVis .~ False)]
   (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
   AppDoneConfig -> [Event AppRefresh, Model (model & configVis .~ False), Task $ writeConfigTask (model ^. cfgFilePath) (model ^. kwakConfig)]
   -- AppDoneConfig -> let newCfg = selfUpdate (model ^. kwakConfig)
@@ -248,6 +268,10 @@ writeConfigTask fp kcm = do
 
 -- KurintoSansAux-Rg.ttf
 
+convertSFEvent :: SFEvent -> AppEvent
+convertSFEvent SFCancel = AppClosePopups
+convertSFEvent (SFFilePath fp) = AppSetOutput fp
+
 selectFontI :: InputOrth -> Font
 selectFontI IUmista   = "Umista"
 selectFontI INapa     = "NAPA"
@@ -294,8 +318,8 @@ main = do
       ]
     -- model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def cfgFile
     -- Not using Ini in Model version:
-    model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt def cfgFile
-    model' cfgFile (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" (getIniValue iniX) cfgFile
+    model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False False txt def def cfgFile
+    model' cfgFile (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False False "" (getIniValue iniX) def cfgFile
     -- Using Ini in Model version:
     -- defIni = ini def configSpec
     -- model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni cfgFile

@@ -22,8 +22,11 @@ library
       Kwakwala.GUI.Config.File
       Kwakwala.GUI.Config.Parsing
       Kwakwala.GUI.Exception
+      Kwakwala.GUI.Hidden
+      Kwakwala.GUI.Hidden.Internal
       Kwakwala.GUI.Info
       Kwakwala.GUI.Types
+      Kwakwala.GUI.Widgets.SaveFile
   other-modules:
       Paths_kwak_gui
   hs-source-dirs:

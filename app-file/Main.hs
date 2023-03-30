@@ -150,16 +150,11 @@ buildUI wenv model = widgetTree where
       -- , spacer
       , vstack
         [ hstack 
-           [ button_ "Choose Destination" AppSaveFile [resizeFactorW 0] 
-           , spacer
+           [ box_ [expandContent, sizeReqUpdater sizeReqX] 
+               (button "Choose Destination" AppSaveFile)
+           , spacer -- filler
            , button "(Manual)" AppSaveFileMan
            ]
-        {-   
-        [ hsplit
-           ( button "Choose Destination" AppSaveFile -- [resizeFactorW 0] 
-           , button "(Manual)" AppSaveFileMan
-           )
-        -}
         , spacer
         , (textField_ outputFile [readOnly])
         , spacer
@@ -173,6 +168,10 @@ buildUI wenv model = widgetTree where
     , popup writeSuccessVis (alertMsg "File Saved Successfully." AppClosePopups)
     , popup openErrorVis (alertMsg "Could not open requested file." AppClosePopups)
     ] `styleBasic` [padding 10]
+
+sizeReqX :: (SizeReq, SizeReq) -> (SizeReq, SizeReq)
+sizeReqX (szrW, szrH)
+  = (szrW {_szrFlex = 5, _szrExtra = 5, _szrFactor = 0.005}, szrH)
 
 handleEvent
   :: WidgetEnv AppModel AppEvent

@@ -195,7 +195,7 @@ handleEvent wenv node model evt = case evt of
      (Just txt) -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
      Nothing    -> [Model (model & openErrorVis .~ True)]
   -- Technically not a task anymore; it's just a bit too complicated to fit here.
-  AppWriteFile -> [writeFileTask model (T.unpack (model ^. inputFile)) (T.unpack (model ^. outputFile)) (model ^. outputText)]
+  AppWriteFile -> [writeFileTask (T.unpack (model ^. inputFile)) (T.unpack (model ^. outputFile)) (model ^. outputText)]
   AppWriteSuccess -> [Model (model & writeSuccessVis .~ True)] -- Display a pop-up message, maybe?
   AppWriteExists -> [Model (model & overwriteConfVis .~ True)]
   (AppWriteError err) -> [Model (model & errorMsg .~ (renderError err) & errorAlertVis .~ True), tlogErrTask err]
@@ -244,8 +244,8 @@ handleEvent wenv node model evt = case evt of
       Just (txt', ' ') -> txt'
       Just (_txt,  _ ) -> (snoc txt ' ')
 
-writeFileTask :: AppModel -> FilePath -> FilePath -> Text -> AppEventResponse AppModel AppEvent
-writeFileTask model inp fp txt
+writeFileTask :: FilePath -> FilePath -> Text -> AppEventResponse AppModel AppEvent
+writeFileTask inp fp txt
   | (inp == "") = Event (AppWriteError $ "No input file selected yet. Choose an input file first.")
   | (inp == fp) = Event (AppWriteError $ "Can't overwrite input file; choose a different name for output file.")
   | (fp == "" ) = Event (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")

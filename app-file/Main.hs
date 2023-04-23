@@ -167,18 +167,10 @@ buildUI wenv model = widgetTree where
     , spacer
     , button "Save File" AppWriteFile
     , popup overwriteConfVis (confirmMsg "File already Exists. Overwrite?" AppOverWrite AppClosePopups)
-    -- , popup errorAlertVis (alertMsg_ (rdrErr (model ^. errorMsg)) AppClosePopups [titleCaption "Error"]) `styleBasic` [textFont "Monotype"]
-    -- , popup errorAlertVis (alert_ AppClosePopups [titleCaption "Error"] errText) `styleBasic` [textFont "Monotype"]
-    -- , popup errorAlertVis (altAlertMsg (rdrErr (model ^. errorMsg)) AppClosePopups) `styleBasic` [textFont "Monotype"]
-    , popup errorAlertVis (altAlertMsg_ (rdrErr (model ^. errorMsg)) AppClosePopups [titleCaption "error"]) `styleBasic` [textFont "Monotype"]
+    , popup errorAlertVis (altAlertMsg_ (model ^. errorMsg) AppClosePopups [titleCaption "Error"]) `styleBasic` [textFont "Monotype"]
     , popup writeSuccessVis (alertMsg "File Saved Successfully." AppClosePopups)
     , popup openErrorVis (alertMsg "Could not open requested file." AppClosePopups)
     ] `styleBasic` [padding 10]
-  -- errText = hstack [label "Error: ", textArea_ errorMsg [readOnly]]
-  -- errText = label_ (rdrErr (model ^. errorMsg)) [multiline]
-
-rdrErr :: Text -> Text
-rdrErr = ("Error:\n\n" <>)
 
 sizeReqX :: (SizeReq, SizeReq) -> (SizeReq, SizeReq)
 sizeReqX (szrW, szrH)
@@ -202,7 +194,7 @@ handleEvent wenv node model evt = case evt of
   AppGotInput mtxt -> case mtxt of
      (Just txt) -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
      Nothing    -> [Model (model & openErrorVis .~ True)]
-  -- Technically not a task; it's just a bit too complicated to fit here.
+  -- Technically not a task anymore; it's just a bit too complicated to fit here.
   AppWriteFile -> [writeFileTask model (T.unpack (model ^. inputFile)) (T.unpack (model ^. outputFile)) (model ^. outputText)]
   AppWriteSuccess -> [Model (model & writeSuccessVis .~ True)] -- Display a pop-up message, maybe?
   AppWriteExists -> [Model (model & overwriteConfVis .~ True)]
@@ -251,40 +243,10 @@ handleEvent wenv node model evt = case evt of
       Nothing -> " "
       Just (txt', ' ') -> txt'
       Just (_txt,  _ ) -> (snoc txt ' ')
-{-
-writeFileTask :: FilePath -> FilePath -> Text -> IO AppEvent
-writeFileTask inp fp txt
-  | (inp == fp) = return (AppWriteError $ "Can't overwrite input file; choose a different name for output file.")
-  | (fp == "" ) = return (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
-  | (fp == ".") = return (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
-  | otherwise = do
-      bl <- doesFileExist fp
-      if bl
-        then return AppWriteExists
-        else do 
-          eEvt <- try @SomeException (TU.writeFile fp txt)
-          case eEvt of
-            Left x   -> return (AppWriteError $ T.pack (show x))
-            Right () -> return AppWriteSuccess
--}
-
-{-
-writeFileTask :: FilePath -> FilePath -> Text -> IO AppEvent
-writeFileTask inp fp txt = do
-  bl <- doesFileExist fp
-  if | (inp == fp) -> return (AppWriteError $ "Can't overwrite input file; choose a different name for output file.")
-     | (fp == "" ) -> return (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
-     | (fp == ".") -> return (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
-     | bl -> return AppWriteExists
-     | otherwise -> do 
-         eEvt <- try @SomeException (TU.writeFile fp txt)
-         case eEvt of
-           Left x   -> return (AppWriteError $ T.pack (show x))
-           Right () -> return AppWriteSuccess
--}
 
 writeFileTask :: AppModel -> FilePath -> FilePath -> Text -> AppEventResponse AppModel AppEvent
 writeFileTask model inp fp txt
+  | (inp == "") = Event (AppWriteError $ "No input file selected yet. Choose an input file first.")
   | (inp == fp) = Event (AppWriteError $ "Can't overwrite input file; choose a different name for output file.")
   | (fp == "" ) = Event (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
   | (fp == ".") = Event (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")

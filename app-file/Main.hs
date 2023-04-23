@@ -13,6 +13,7 @@ import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import Data.Text.IO qualified as TIO
 import Monomer
 import Monomer.Common.BasicTypes
 import TextShow
@@ -24,6 +25,7 @@ import Kwakwala.GUI.Info
 import Kwakwala.GUI.Types
 
 import Kwakwala.GUI.Hidden
+import Kwakwala.GUI.Widgets.AltAlert
 import Kwakwala.GUI.Widgets.SaveFile
 
 import qualified Monomer.Lens as L
@@ -37,6 +39,7 @@ import Graphics.UI.TinyFileDialogs (saveFileDialog, openFileDialog)
 
 import System.Directory
 import System.FilePath
+import System.IO
 
 import TextUTF8 qualified as TU
 
@@ -164,10 +167,18 @@ buildUI wenv model = widgetTree where
     , spacer
     , button "Save File" AppWriteFile
     , popup overwriteConfVis (confirmMsg "File already Exists. Overwrite?" AppOverWrite AppClosePopups)
-    , popup errorAlertVis (alertMsg (model ^. errorMsg) AppClosePopups) `styleBasic` [textFont "Monotype"]
+    -- , popup errorAlertVis (alertMsg_ (rdrErr (model ^. errorMsg)) AppClosePopups [titleCaption "Error"]) `styleBasic` [textFont "Monotype"]
+    -- , popup errorAlertVis (alert_ AppClosePopups [titleCaption "Error"] errText) `styleBasic` [textFont "Monotype"]
+    -- , popup errorAlertVis (altAlertMsg (rdrErr (model ^. errorMsg)) AppClosePopups) `styleBasic` [textFont "Monotype"]
+    , popup errorAlertVis (altAlertMsg_ (rdrErr (model ^. errorMsg)) AppClosePopups [titleCaption "error"]) `styleBasic` [textFont "Monotype"]
     , popup writeSuccessVis (alertMsg "File Saved Successfully." AppClosePopups)
     , popup openErrorVis (alertMsg "Could not open requested file." AppClosePopups)
     ] `styleBasic` [padding 10]
+  -- errText = hstack [label "Error: ", textArea_ errorMsg [readOnly]]
+  -- errText = label_ (rdrErr (model ^. errorMsg)) [multiline]
+
+rdrErr :: Text -> Text
+rdrErr = ("Error:\n\n" <>)
 
 sizeReqX :: (SizeReq, SizeReq) -> (SizeReq, SizeReq)
 sizeReqX (szrW, szrH)
@@ -191,10 +202,11 @@ handleEvent wenv node model evt = case evt of
   AppGotInput mtxt -> case mtxt of
      (Just txt) -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
      Nothing    -> [Model (model & openErrorVis .~ True)]
-  AppWriteFile -> [Task $ writeFileTask (T.unpack (model ^. outputFile)) (model ^. outputText)] 
+  -- Technically not a task; it's just a bit too complicated to fit here.
+  AppWriteFile -> [writeFileTask model (T.unpack (model ^. inputFile)) (T.unpack (model ^. outputFile)) (model ^. outputText)]
   AppWriteSuccess -> [Model (model & writeSuccessVis .~ True)] -- Display a pop-up message, maybe?
   AppWriteExists -> [Model (model & overwriteConfVis .~ True)]
-  (AppWriteError err) -> [Model (model & errorMsg .~ (renderError err) & errorAlertVis .~ True)]
+  (AppWriteError err) -> [Model (model & errorMsg .~ (renderError err) & errorAlertVis .~ True), tlogErrTask err]
   AppOverWrite -> [Task $ overWriteFileTask (T.unpack (model ^. outputFile)) (model ^. outputText), Model (model & overwriteConfVis .~ False)] 
   AppRefresh  -> [Model (model & outputText .~ getConversion (model ^. inputText))]
   AppRefreshI -> [Model (model & outputText .~ getConversion (model ^. inputText) & inputText %~ modText)]
@@ -239,17 +251,56 @@ handleEvent wenv node model evt = case evt of
       Nothing -> " "
       Just (txt', ' ') -> txt'
       Just (_txt,  _ ) -> (snoc txt ' ')
+{-
+writeFileTask :: FilePath -> FilePath -> Text -> IO AppEvent
+writeFileTask inp fp txt
+  | (inp == fp) = return (AppWriteError $ "Can't overwrite input file; choose a different name for output file.")
+  | (fp == "" ) = return (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
+  | (fp == ".") = return (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
+  | otherwise = do
+      bl <- doesFileExist fp
+      if bl
+        then return AppWriteExists
+        else do 
+          eEvt <- try @SomeException (TU.writeFile fp txt)
+          case eEvt of
+            Left x   -> return (AppWriteError $ T.pack (show x))
+            Right () -> return AppWriteSuccess
+-}
 
-writeFileTask :: FilePath -> Text -> IO AppEvent
-writeFileTask fp txt = do
+{-
+writeFileTask :: FilePath -> FilePath -> Text -> IO AppEvent
+writeFileTask inp fp txt = do
   bl <- doesFileExist fp
-  if bl
-    then return AppWriteExists
-    else do 
-      eEvt <- try @SomeException (TU.writeFile fp txt)
-      case eEvt of
-        Left x   -> return (AppWriteError $ T.pack (show x))
-        Right () -> return AppWriteSuccess
+  if | (inp == fp) -> return (AppWriteError $ "Can't overwrite input file; choose a different name for output file.")
+     | (fp == "" ) -> return (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
+     | (fp == ".") -> return (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
+     | bl -> return AppWriteExists
+     | otherwise -> do 
+         eEvt <- try @SomeException (TU.writeFile fp txt)
+         case eEvt of
+           Left x   -> return (AppWriteError $ T.pack (show x))
+           Right () -> return AppWriteSuccess
+-}
+
+writeFileTask :: AppModel -> FilePath -> FilePath -> Text -> AppEventResponse AppModel AppEvent
+writeFileTask model inp fp txt
+  | (inp == fp) = Event (AppWriteError $ "Can't overwrite input file; choose a different name for output file.")
+  | (fp == "" ) = Event (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
+  | (fp == ".") = Event (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
+  | otherwise = Task $ do
+      bl <- doesFileExist fp
+      if bl
+        then return AppWriteExists
+        else do 
+          eEvt <- try @SomeException (TU.writeFile fp txt)
+          case eEvt of
+            Left x   -> return (AppWriteError $ T.pack (show x))
+            Right () -> return AppWriteSuccess
+  where
+    renderError :: Text -> Text
+    renderError err = "Error Trying to Save File:\n " <> err
+
 
 overWriteFileTask :: FilePath -> Text -> IO AppEvent
 overWriteFileTask fp txt = do
@@ -295,8 +346,20 @@ readFileMaybe fp = do
     Right txt -> return (Just txt)
     Left _    -> return Nothing
 
+-- For logging errors to the terminal.
+tlogErr :: Text -> IO ()
+tlogErr txt = TIO.hPutStrLn stderr ("Error: " <> txt)
+
+tlogErrTask :: Text -> AppEventResponse AppModel AppEvent
+tlogErrTask txt = Task (tlogErr txt >> return AppNull)
+
 main :: IO ()
 main = do
+  -- Set IO encoding to UTF-8
+  hSetEncoding stdin  utf8
+  hSetEncoding stdout utf8
+  hSetEncoding stderr utf8
+  -- Actual code
   (cfgFile, eConf) <- findAndCreateConf
   startApp (model' cfgFile eConf) handleEvent buildUI config
   where

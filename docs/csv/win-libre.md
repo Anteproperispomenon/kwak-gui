@@ -77,7 +77,7 @@ select the file you want.
 
 ![Selecting Input File](../imgs/gui/gui_0006.png)
 
-This will open up the file in, allowing you to see its
+This will open up the file, allowing you to see its
 contents, and a preview of the converted content. If
 either the input or output orthography is incorrect,
 you can select the correct orthographies.

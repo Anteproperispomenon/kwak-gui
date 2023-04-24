@@ -13,6 +13,7 @@ import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import Data.Text.IO qualified as TIO
 import Monomer
 import Monomer.Common.BasicTypes
 import TextShow
@@ -22,6 +23,10 @@ import Kwakwala.GUI.Config.File
 import Kwakwala.GUI.Config.Parsing
 import Kwakwala.GUI.Info
 import Kwakwala.GUI.Types
+
+import Kwakwala.GUI.Hidden
+import Kwakwala.GUI.Widgets.AltAlert
+import Kwakwala.GUI.Widgets.SaveFile
 
 import qualified Monomer.Lens as L
 
@@ -34,6 +39,7 @@ import Graphics.UI.TinyFileDialogs (saveFileDialog, openFileDialog)
 
 import System.Directory
 import System.FilePath
+import System.IO
 
 import TextUTF8 qualified as TU
 
@@ -53,8 +59,10 @@ data AppModel = AppModel
   , _writeSuccessVis :: Bool
   , _openErrorVis :: Bool
   , _configVis :: Bool
+  , _sfmVis    :: Bool
   , _errorMsg :: Text
   , _kwakConfig :: KwakConfigModel
+  , _sfmHidden :: HiddenVal SaveFileModel
   , _cfgFilePath :: FilePath
   -- , _kwakConfig :: Ini KwakConfigModel
   } deriving (Eq, Show)
@@ -64,8 +72,12 @@ data AppEvent
   | AppSetInput Text
   | AppSetOutput Text
   | AppOpenFile -- triggers dialog
+  | AppOpenFileKey -- when using the keystroke
   | AppSaveFile -- triggers dialog
+  | AppSaveFileKey -- when using the keystroke
+  | AppSaveFileMan -- triggers manual output
   | AppWriteFile -- Actually writes content to file
+  | AppWriteFileKey
   | AppGotInput (Maybe Text)
   | AppRefresh -- Refresh Output
   | AppRefreshI -- Refresh Input, to change the font.
@@ -87,7 +99,7 @@ buildUI
   -> AppModel
   -> WidgetNode AppModel AppEvent
 buildUI wenv model = widgetTree where
-  widgetTree = vstack 
+  widgetTree = keystroke keyCommands $ vstack 
     [ button "Config" AppOpenConfig
     , spacer
     , hstack
@@ -112,6 +124,9 @@ buildUI wenv model = widgetTree where
           [ kwakConfigWidgetX kwakConfig
           , button "Done" AppDoneConfig
           ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
+    , popup_ sfmVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $ 
+        box (selectSaveFileH sfmHidden inputFile convertSFEvent)
+          `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
     , hstack
       [ label "Output" `styleBasic` [textFont "Monotype"]
       , spacer
@@ -140,7 +155,12 @@ buildUI wenv model = widgetTree where
         ]
       -- , spacer
       , vstack
-        [ button "Choose Destination" AppSaveFile
+        [ hstack 
+           [ box_ [expandContent, sizeReqUpdater sizeReqX] 
+               (button "Choose Destination" AppSaveFile)
+           , spacer -- filler
+           , button "(Manual)" AppSaveFileMan
+           ]
         , spacer
         , (textField_ outputFile [readOnly])
         , spacer
@@ -150,10 +170,22 @@ buildUI wenv model = widgetTree where
     , spacer
     , button "Save File" AppWriteFile
     , popup overwriteConfVis (confirmMsg "File already Exists. Overwrite?" AppOverWrite AppClosePopups)
-    , popup errorAlertVis (alertMsg (model ^. errorMsg) AppClosePopups) `styleBasic` [textFont "Monotype"]
+    , popup errorAlertVis (altAlertMsg_ (model ^. errorMsg) AppClosePopups [titleCaption "Error"]) `styleBasic` [textFont "Monotype"]
     , popup writeSuccessVis (alertMsg "File Saved Successfully." AppClosePopups)
     , popup openErrorVis (alertMsg "Could not open requested file." AppClosePopups)
     ] `styleBasic` [padding 10]
+  keyCommands
+    = [ ("Ctrl-o", AppOpenFileKey )
+      , ("Cmd-o" , AppOpenFileKey )
+      , ("Ctrl-s", AppSaveFileKey )
+      , ("Cmd-s" , AppSaveFileKey )
+      , ("Ctrl-w", AppWriteFileKey)
+      , ("Cmd-w" , AppWriteFileKey)
+      ]
+
+sizeReqX :: (SizeReq, SizeReq) -> (SizeReq, SizeReq)
+sizeReqX (szrW, szrH)
+  = (szrW {_szrFlex = 5, _szrExtra = 5, _szrFactor = 0.005}, szrH)
 
 handleEvent
   :: WidgetEnv AppModel AppEvent
@@ -166,26 +198,39 @@ handleEvent wenv node model evt = case evt of
   AppNull -> []
   -- AppIncrease -> [Model (model & clickCount +~ 1)]
   (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm), Task $ AppGotInput <$> readFileMaybe (T.unpack fnm)]
-  (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm)]
+  (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm & sfmVis .~ False)]
   AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" ["*.txt", "*.*"] "Text Files" False]
   AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) ["*.txt", "*.*"] "Text Files"]
+  AppSaveFileMan  -> [Model (model & sfmVis .~ True)]
+  AppOpenFileKey  -> if checkNoPopups then [Event AppOpenFile]  else []
+  AppSaveFileKey  -> if checkNoPopups then [Event AppSaveFile]  else []
+  AppWriteFileKey -> if checkNoPopups then [Event AppWriteFile] else []
   AppGotInput mtxt -> case mtxt of
      (Just txt) -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
      Nothing    -> [Model (model & openErrorVis .~ True)]
-  AppWriteFile -> [Task $ writeFileTask (T.unpack (model ^. outputFile)) (model ^. outputText)] 
+  -- Technically not a task anymore; it's just a bit too complicated to fit here.
+  AppWriteFile -> [writeFileTask (T.unpack (model ^. inputFile)) (T.unpack (model ^. outputFile)) (model ^. outputText)]
   AppWriteSuccess -> [Model (model & writeSuccessVis .~ True)] -- Display a pop-up message, maybe?
   AppWriteExists -> [Model (model & overwriteConfVis .~ True)]
-  (AppWriteError err) -> [Model (model & errorMsg .~ (renderError err) & errorAlertVis .~ True)]
+  (AppWriteError err) -> [Model (model & errorMsg .~ (renderError err) & errorAlertVis .~ True), tlogErrTask err]
   AppOverWrite -> [Task $ overWriteFileTask (T.unpack (model ^. outputFile)) (model ^. outputText), Model (model & overwriteConfVis .~ False)] 
   AppRefresh  -> [Model (model & outputText .~ getConversion (model ^. inputText))]
   AppRefreshI -> [Model (model & outputText .~ getConversion (model ^. inputText) & inputText %~ modText)]
-  AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False & openErrorVis .~ False & configVis .~ False)]
+  AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False & openErrorVis .~ False & configVis .~ False & sfmVis .~ False)]
   (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
   AppDoneConfig -> [Event AppRefresh, Model (model & configVis .~ False), Task $ writeConfigTask (model ^. cfgFilePath) (model ^. kwakConfig)]
   -- AppDoneConfig -> let newCfg = selfUpdate (model ^. kwakConfig)
   --   in [Model (model & configVis .~ False & kwakConfig .~ newCfg)] -- Add task here to update config file.
   AppOpenConfig -> [Model (model & configVis .~ True )]
   where 
+    checkNoPopups :: Bool
+    checkNoPopups = not ((model ^. overwriteConfVis) 
+      || (model ^. errorAlertVis)
+      || (model ^. writeSuccessVis)
+      || (model ^. openErrorVis)
+      || (model ^. configVis)
+      || (model ^. sfmVis))
+      
     handleFile1 :: Maybe [Text] -> AppEvent
     handleFile1 Nothing = AppNull
     handleFile1 (Just []) = AppNull
@@ -221,16 +266,25 @@ handleEvent wenv node model evt = case evt of
       Just (txt', ' ') -> txt'
       Just (_txt,  _ ) -> (snoc txt ' ')
 
-writeFileTask :: FilePath -> Text -> IO AppEvent
-writeFileTask fp txt = do
-  bl <- doesFileExist fp
-  if bl
-    then return AppWriteExists
-    else do 
-      eEvt <- try @SomeException (TU.writeFile fp txt)
-      case eEvt of
-        Left x   -> return (AppWriteError $ T.pack (show x))
-        Right () -> return AppWriteSuccess
+writeFileTask :: FilePath -> FilePath -> Text -> AppEventResponse AppModel AppEvent
+writeFileTask inp fp txt
+  | (inp == "") = Event (AppWriteError $ "No input file selected yet. Choose an input file first.")
+  | (inp == fp) = Event (AppWriteError $ "Can't overwrite input file; choose a different name for output file.")
+  | (fp == "" ) = Event (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
+  | (fp == ".") = Event (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
+  | otherwise = Task $ do
+      bl <- doesFileExist fp
+      if bl
+        then return AppWriteExists
+        else do 
+          eEvt <- try @SomeException (TU.writeFile fp txt)
+          case eEvt of
+            Left x   -> return (AppWriteError $ T.pack (show x))
+            Right () -> return AppWriteSuccess
+  where
+    renderError :: Text -> Text
+    renderError err = "Error Trying to Save File:\n " <> err
+
 
 overWriteFileTask :: FilePath -> Text -> IO AppEvent
 overWriteFileTask fp txt = do
@@ -247,6 +301,10 @@ writeConfigTask fp kcm = do
     Nothing  -> return AppNull
 
 -- KurintoSansAux-Rg.ttf
+
+convertSFEvent :: SFEvent -> AppEvent
+convertSFEvent SFCancel = AppClosePopups
+convertSFEvent (SFFilePath fp) = AppSetOutput fp
 
 selectFontI :: InputOrth -> Font
 selectFontI IUmista   = "Umista"
@@ -272,8 +330,20 @@ readFileMaybe fp = do
     Right txt -> return (Just txt)
     Left _    -> return Nothing
 
+-- For logging errors to the terminal.
+tlogErr :: Text -> IO ()
+tlogErr txt = TIO.hPutStrLn stderr ("Error: " <> txt)
+
+tlogErrTask :: Text -> AppEventResponse AppModel AppEvent
+tlogErrTask txt = Task (tlogErr txt >> return AppNull)
+
 main :: IO ()
 main = do
+  -- Set IO encoding to UTF-8
+  hSetEncoding stdin  utf8
+  hSetEncoding stdout utf8
+  hSetEncoding stderr utf8
+  -- Actual code
   (cfgFile, eConf) <- findAndCreateConf
   startApp (model' cfgFile eConf) handleEvent buildUI config
   where
@@ -294,8 +364,8 @@ main = do
       ]
     -- model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def cfgFile
     -- Not using Ini in Model version:
-    model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt def cfgFile
-    model' cfgFile (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" (getIniValue iniX) cfgFile
+    model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False False txt def def cfgFile
+    model' cfgFile (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False False "" (getIniValue iniX) def cfgFile
     -- Using Ini in Model version:
     -- defIni = ini def configSpec
     -- model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni cfgFile

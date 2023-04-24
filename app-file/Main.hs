@@ -72,9 +72,12 @@ data AppEvent
   | AppSetInput Text
   | AppSetOutput Text
   | AppOpenFile -- triggers dialog
+  | AppOpenFileKey -- when using the keystroke
   | AppSaveFile -- triggers dialog
+  | AppSaveFileKey -- when using the keystroke
   | AppSaveFileMan -- triggers manual output
   | AppWriteFile -- Actually writes content to file
+  | AppWriteFileKey
   | AppGotInput (Maybe Text)
   | AppRefresh -- Refresh Output
   | AppRefreshI -- Refresh Input, to change the font.
@@ -96,7 +99,7 @@ buildUI
   -> AppModel
   -> WidgetNode AppModel AppEvent
 buildUI wenv model = widgetTree where
-  widgetTree = vstack 
+  widgetTree = keystroke keyCommands $ vstack 
     [ button "Config" AppOpenConfig
     , spacer
     , hstack
@@ -171,6 +174,14 @@ buildUI wenv model = widgetTree where
     , popup writeSuccessVis (alertMsg "File Saved Successfully." AppClosePopups)
     , popup openErrorVis (alertMsg "Could not open requested file." AppClosePopups)
     ] `styleBasic` [padding 10]
+  keyCommands
+    = [ ("Ctrl-o", AppOpenFileKey )
+      , ("Cmd-o" , AppOpenFileKey )
+      , ("Ctrl-s", AppSaveFileKey )
+      , ("Cmd-s" , AppSaveFileKey )
+      , ("Ctrl-w", AppWriteFileKey)
+      , ("Cmd-w" , AppWriteFileKey)
+      ]
 
 sizeReqX :: (SizeReq, SizeReq) -> (SizeReq, SizeReq)
 sizeReqX (szrW, szrH)
@@ -190,7 +201,10 @@ handleEvent wenv node model evt = case evt of
   (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm & sfmVis .~ False)]
   AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" ["*.txt", "*.*"] "Text Files" False]
   AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) ["*.txt", "*.*"] "Text Files"]
-  AppSaveFileMan -> [Model (model & sfmVis .~ True)]
+  AppSaveFileMan  -> [Model (model & sfmVis .~ True)]
+  AppOpenFileKey  -> if checkNoPopups then [Event AppOpenFile]  else []
+  AppSaveFileKey  -> if checkNoPopups then [Event AppSaveFile]  else []
+  AppWriteFileKey -> if checkNoPopups then [Event AppWriteFile] else []
   AppGotInput mtxt -> case mtxt of
      (Just txt) -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
      Nothing    -> [Model (model & openErrorVis .~ True)]
@@ -209,6 +223,14 @@ handleEvent wenv node model evt = case evt of
   --   in [Model (model & configVis .~ False & kwakConfig .~ newCfg)] -- Add task here to update config file.
   AppOpenConfig -> [Model (model & configVis .~ True )]
   where 
+    checkNoPopups :: Bool
+    checkNoPopups = not ((model ^. overwriteConfVis) 
+      || (model ^. errorAlertVis)
+      || (model ^. writeSuccessVis)
+      || (model ^. openErrorVis)
+      || (model ^. configVis)
+      || (model ^. sfmVis))
+      
     handleFile1 :: Maybe [Text] -> AppEvent
     handleFile1 Nothing = AppNull
     handleFile1 (Just []) = AppNull

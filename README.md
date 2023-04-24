@@ -66,7 +66,8 @@ compress them into a zip file to distribute to other users.
 Fortunately, running the applications via `stack run ...` works the same as it
 does on Windows. Unfortunately, running the program via an executable is more
 difficult than it is on Windows. Note that in order to see `.stack-work`, you'll
-have to ensure that hidden files are visible.
+have to ensure that hidden files are visible. You can do this by pressing
+`Command+Shift+Dot` while in Finder.
 
 First, follow the same directions for copying executables as on Windows, aside
 from the dll files. As before, the directory you are copying the files to will
@@ -164,6 +165,7 @@ two small text boxes that show the locations of the files you are working with.
 #### Selecting File to Convert
 
 To select the file you wish to convert, click `Select File` on the left side of the window.
+On versions after 2023-04-24-1145, you can also press `Ctrl+O` (or `Cmd+O` on Mac).
 This will open a system window where you can browse your computer for the file you are
 looking for. Since this uses the system's `Open File` window, the interface will vary
 depending on your operating system.
@@ -182,9 +184,16 @@ want to output it to.
 #### Selecting Output File
 
 To save the output to a file, first you must click `Choose Destination` to select where
-you want to save the file. This opens your system's `Save File` window, which will ask
+you want to save the file. Like with open, on newer versions you can press `Ctrl+S`/`Cmd+S`
+to select this option. This opens your system's `Save File` window, which will ask
 you to select a name and location for the output file. Note that this does **not**
 actually save the file, even though it looks like it does. To save the file, you must
-then click on `Save File` at the bottom of the main window. Note that this awkward process
-will likely change in a future version, but will stay as-is for now.
+then click on `Save File` at the bottom of the main window. You can also press
+`Ctrl+W`/`Cmd+W` to actually write the file to disk. Note that this awkward process
+was originally set to change in a future version, but since there are now multiple
+ways to select the output file, that seems unlikely.
+
+Also note that, in versions since 2023-04-23, you can't select the input file as
+output. This is to prevent accidental overwriting of the original file. It also
+prevents data loss in case there is an error while overwriting the original file.
 

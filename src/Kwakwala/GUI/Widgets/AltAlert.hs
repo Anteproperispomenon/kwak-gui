@@ -7,7 +7,11 @@ module Kwakwala.GUI.Widgets.AltAlert
   ) where
 
 -- A variation on Alert that allows
--- updatable content
+-- updatable content. The majority
+-- of this file was copied from
+-- Monomer.Widgets.Containers.Alert
+-- and modified slightly to be aware
+-- of changes to the parent model.
 
 import Control.Applicative ((<|>))
 import Control.Lens ((&), (.~), (%~), (^.))

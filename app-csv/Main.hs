@@ -400,7 +400,7 @@ main = do
       appFontDef "Umista" "./assets/fonts/DoulosSIL-Regular.ttf",
       appFontDef "NAPA" "./assets/fonts/DoulosSIL-Regular.ttf",
       appFontDef "Boas" "./assets/fonts/KurintoSans-Rg.ttf",
-      appFontDef "IPA" "./assets/fonts/DoulosSIL-Regular.ttf",
+      appFontDef "IPA"  "./assets/fonts/DoulosSIL-Regular.ttf",
       appFontDef "Island" "./assets/fonts/island.ttf",
       appInitEvent AppInit
       ]
@@ -449,18 +449,24 @@ readCSVMaybe mc fp = do
     (Just c) -> parseDSV False c bs
   let csvErrs = csvErrors    csvRslt
       csvTabl = csvTableFull csvRslt
-      csvList = map (map (T.decodeUtf8 . BL.toStrict . csvFieldContent)) csvTabl
-      (r:rs)  = csvList
+
+      csvList = map (map getContent) csvTabl
+  case csvList of
+    [] -> return (csvErrs, [])
+    (r:rs) -> let
       hdrs    = map Just r
       cols    = transpose rs
       colsX   = map T.unlines cols
       outs    = zipWithL hdrs colsX $ \hdr col ->
                   (hdr, False, IUmista, OUmista, col, col)
-  return (csvErrs, outs)
+      in return (csvErrs, outs)
+  where
+    getContent :: CSVField -> Text
+    -- can handle how quoting works here.
+    getContent (CSVField {csvFieldContent = bs, csvFieldQuoted = bl}) = T.decodeUtf8 $ BL.toStrict bs
+    getContent (CSVFieldError {}) = ""
 
 {-
-
-
 data AppModel = AppModel 
   { _inputFile  :: Text
   , _outputFile :: Text

@@ -26,11 +26,12 @@ data InputOrth
   deriving (Show, Eq)
 
 instance TextShow InputOrth where
-  showb IUmista = "IUmista"
-  showb INapa = "INapa"
-  showb IGrubb = "IGrubb"
-  showb IGeorgian = "IGeorgian"
-  showb IBoas = "IBoas"
+  showb IUmista = "U'mista"
+  showb INapa = "Napa"
+  showb IGrubb = "Grubb"
+  showb IGeorgian = "Georgian"
+  showb IBoas = "Boas"
+  showb IIsland = "Island"
 
 -- | Output Orthography Option.
 data OutputOrth
@@ -44,12 +45,13 @@ data OutputOrth
   deriving (Show, Eq)
 
 instance TextShow OutputOrth where
-  showb OUmista = "OUmista"
-  showb ONapa = "ONapa"
-  showb OGrubb = "OGrubb"
-  showb OGeorgian = "OGeorgian"
-  showb OBoas = "OBoas"
-  showb OIpa = "OIpa"
+  showb OUmista = "U'mista"
+  showb ONapa = "Napa"
+  showb OGrubb = "Grubb"
+  showb OGeorgian = "Georgian"
+  showb OBoas = "Boas"
+  showb OIpa = "Ipa"
+  showb OIsland = "Island"
     
 parseKwakwalaD :: KwakConfigModel -> InputOrth -> Text -> [CasedChar]
 parseKwakwalaD _ IUmista   = encodeFromUmista

@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Main where
 
@@ -136,11 +137,11 @@ buildUI wenv model = widgetTree where
           , button "Done" AppDoneConfig
           ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
 
-    {- -- maybe re-open
+    -- maybe re-open
     , popup_ sfmVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $ 
         box (selectSaveFileH sfmHidden inputFile convertSFEvent)
           `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
-    -}
+    
     
     {- do not re-open
     , hstack
@@ -236,6 +237,11 @@ forWithKey = flip IM.mapWithKey
 forL :: [a] -> (a -> b) -> [b]
 forL xs f = map f xs
 
+{-
+  | AppChangeIOrth Int  InputOrth
+  | AppChangeOOrth Int OutputOrth
+  | AppChangeModify Int Bool
+-}
 
 handleEvent
   :: WidgetEnv AppModel AppEvent
@@ -243,14 +249,46 @@ handleEvent
   -> AppModel
   -> AppEvent
   -> [AppEventResponse AppModel AppEvent]
-handleEvent wenv node model evt = []
-{-
+-- handleEvent wenv node model evt = []
 handleEvent wenv node model evt = case evt of
   AppInit -> [Task $ AppCurDir <$> getCurrentDirectory]
   AppNull -> []
   -- AppIncrease -> [Model (model & clickCount +~ 1)]
   (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm), Task $ AppGotInput <$> readFileMaybe (T.unpack fnm)]
   (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm & sfmVis .~ False)]
+  -- (AppChangeIOrth ky io) -> [Model (model & inputText . ix ky . _3 .~ io)]
+  (AppChangeIOrth ky io) 
+    -> [Model 
+         (model & inputText . at ky %~ \case
+           Nothing -> Nothing
+           Just (hdr, bl, oldIo, oldOo, itxt, otxt) -> Just (hdr, bl, io, oldOo, itxt, convertText io oldOo itxt)
+         )
+       ]
+  -- (AppChangeOOrth ky oo) -> [Model (model & inputText . ix ky . _4 .~ oo)]
+  (AppChangeOOrth ky oo) 
+    -> [Model 
+         (model & inputText . at ky %~ \case
+           Nothing -> Nothing
+           Just (hdr, bl, oldIo, oldOo, itxt, otxt) -> Just (hdr, bl, oldIo, oo, itxt, convertText oldIo oo itxt)
+         )
+       ]
+  -- (AppChangeModify ky b) -> [Model (model & inputText . ix ky . _2 .~ b )]
+  (AppChangeModify ky True) 
+    -> [Model 
+         (model & inputText . at ky %~ \case
+           Nothing -> Nothing
+           Just (hdr, oldbl, io, oo, itxt, otxt) -> Just (hdr, True, io, oo, itxt, convertText io oo itxt)
+         )
+       ]
+  (AppChangeModify ky False) 
+    -> [Model 
+         (model & inputText . at ky %~ \case
+           Nothing -> Nothing
+           Just (hdr, oldbl, io, oo, itxt, otxt) -> Just (hdr, False, io, oo, itxt, itxt)
+         )
+       ]
+
+  {- 
   AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" ["*.txt", "*.*"] "Text Files" False]
   AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) ["*.txt", "*.*"] "Text Files"]
   AppSaveFileMan  -> [Model (model & sfmVis .~ True)]
@@ -261,6 +299,7 @@ handleEvent wenv node model evt = case evt of
      (Just txt) -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
      Nothing    -> [Model (model & openErrorVis .~ True)]
   -- Technically not a task anymore; it's just a bit too complicated to fit here.
+  -- _ -> []
   AppWriteFile -> [writeFileTask (T.unpack (model ^. inputFile)) (T.unpack (model ^. outputFile)) (model ^. outputText)]
   AppWriteSuccess -> [Model (model & writeSuccessVis .~ True)] -- Display a pop-up message, maybe?
   AppWriteExists -> [Model (model & overwriteConfVis .~ True)]
@@ -274,6 +313,8 @@ handleEvent wenv node model evt = case evt of
   -- AppDoneConfig -> let newCfg = selfUpdate (model ^. kwakConfig)
   --   in [Model (model & configVis .~ False & kwakConfig .~ newCfg)] -- Add task here to update config file.
   AppOpenConfig -> [Model (model & configVis .~ True )]
+  -}
+  _ -> []
   where 
     checkNoPopups :: Bool
     checkNoPopups = not ((model ^. overwriteConfVis) 
@@ -290,12 +331,17 @@ handleEvent wenv node model evt = case evt of
     handleFile2 :: Maybe Text -> AppEvent
     handleFile2 Nothing = AppNull
     handleFile2 (Just fnm) = AppSetOutput fnm
+    convertText :: InputOrth -> OutputOrth -> Text -> Text
+    convertText inpO outO inpTxt = decodeKwakwalaD kcm outO $ parseKwakwalaD kcm inpO inpTxt
+      where kcm = model ^. kwakConfig
+    {-
     getConversion :: Text -> Text
     getConversion inpTxt = let 
       inpO = model ^. inputOrth
       outO = model ^. outputOrth
       kcm  = model ^. kwakConfig
       in decodeKwakwalaD kcm outO $ parseKwakwalaD kcm inpO inpTxt
+    -}
     inpDir :: Text
     inpDir = case (model ^. inputFile) of
       ""  -> ""
@@ -317,14 +363,6 @@ handleEvent wenv node model evt = case evt of
       Nothing -> " "
       Just (txt', ' ') -> txt'
       Just (_txt,  _ ) -> (snoc txt ' ')
--}
-
-
-
-
-
-
-
 
 
 main :: IO ()
@@ -361,6 +399,10 @@ main = do
     -- model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni cfgFile
     -- model' cfgFile (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" iniX cfgFile
 
+convertSFEvent :: SFEvent -> AppEvent
+convertSFEvent SFCancel = AppClosePopups
+convertSFEvent (SFFilePath fp) = AppSetOutput fp
+
 selectFontI :: InputOrth -> Font
 selectFontI IUmista   = "Umista"
 selectFontI INapa     = "NAPA"
@@ -377,6 +419,15 @@ selectFontO OGeorgian = "Georgian"
 selectFontO OBoas     = "Boas"
 selectFontO OIsland   = "Island"
 selectFontO OIpa      = "IPA"  
+
+readFileMaybe :: FilePath -> IO (Maybe Text)
+readFileMaybe fp = do
+  mtxt <- T.decodeUtf8' <$> BS.readFile fp
+  case mtxt of
+    Right txt -> return (Just txt)
+    Left _    -> return Nothing
+
+
 
 {-
 

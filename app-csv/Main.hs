@@ -7,9 +7,11 @@ module Main where
 
 import Control.Exception
 import Control.Lens
-import Data.ByteString qualified as BS
+import Data.ByteString      qualified as BS
+import Data.ByteString.Lazy qualified as BL
 import Data.Default (def)
 import Data.Ini.Config.Bidir
+import Data.List
 import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -47,7 +49,7 @@ import System.IO
 
 import TextUTF8 qualified as TU
 
-import Text.CSV.Lazy.String
+import Text.CSV.Lazy.ByteString
 
 -- from kwak-orth
 import Kwakwala.Sounds
@@ -69,6 +71,7 @@ data AppModel = AppModel
   , _kwakConfig :: KwakConfigModel
   , _sfmHidden :: HiddenVal SaveFileModel
   , _cfgFilePath :: FilePath
+  , _csvSep :: Maybe Char
   -- , _csvHeaders :: [Bool]
   -- , _csvSelection :: Int -- Which column is being worked on.
   -- , _kwakConfig :: Ini KwakConfigModel
@@ -85,7 +88,7 @@ data AppEvent
   | AppSaveFileMan -- triggers manual output
   | AppWriteFile -- Actually writes content to file
   | AppWriteFileKey
-  | AppGotInput (Maybe Text)
+  | AppGotInput ([CSVError],[(Maybe Text, Bool, InputOrth, OutputOrth, Text, Text)])
   | AppRefresh -- Refresh Output
   | AppRefreshI -- Refresh Input, to change the font.
   | AppCurDir FilePath
@@ -142,7 +145,8 @@ buildUI wenv model = widgetTree where
         box (selectSaveFileH sfmHidden inputFile convertSFEvent)
           `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
     
-    
+    , button "Select File" AppOpenFile
+
     {- do not re-open
     , hstack
       [ label "Output" `styleBasic` [textFont "Monotype"]
@@ -205,7 +209,6 @@ buildUI wenv model = widgetTree where
       , ("Cmd-w" , AppWriteFileKey)
       ]
   -- okay
-  zipWith3L l1 l2 l3 f = zipWith3 f l1 l2 l3
   spreadColumns :: IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text) -> WidgetNode AppModel AppEvent
   spreadColumns strs = hgrid $ forWithKey strs $ \key (hdr, cvtble, iorth, oorth, itxt, otxt) ->
     vstack $
@@ -237,6 +240,12 @@ forWithKey = flip IM.mapWithKey
 forL :: [a] -> (a -> b) -> [b]
 forL xs f = map f xs
 
+zipWithL :: [a] -> [b] -> (a -> b -> c) -> [c]
+zipWithL l1 l2 f = zipWith f l1 l2
+
+zipWith3L :: [a] -> [b] -> [c] -> (a -> b -> c -> d) -> [d]
+zipWith3L l1 l2 l3 f = zipWith3 f l1 l2 l3
+
 {-
   | AppChangeIOrth Int  InputOrth
   | AppChangeOOrth Int OutputOrth
@@ -254,7 +263,7 @@ handleEvent wenv node model evt = case evt of
   AppInit -> [Task $ AppCurDir <$> getCurrentDirectory]
   AppNull -> []
   -- AppIncrease -> [Model (model & clickCount +~ 1)]
-  (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm), Task $ AppGotInput <$> readFileMaybe (T.unpack fnm)]
+  (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm), Task $ AppGotInput <$> readCSVMaybe (model ^. csvSep) (T.unpack fnm)]
   (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm & sfmVis .~ False)]
   -- (AppChangeIOrth ky io) -> [Model (model & inputText . ix ky . _3 .~ io)]
   (AppChangeIOrth ky io) 
@@ -288,8 +297,13 @@ handleEvent wenv node model evt = case evt of
          )
        ]
 
-  {- 
+  
   AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" ["*.txt", "*.*"] "Text Files" False]
+  AppGotInput (errs, cols) -> 
+    [ Model (model & inputText .~ (IM.fromList (zip [1..] cols)))
+    -- need to handle errors somehow.
+    ]
+  {-
   AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) ["*.txt", "*.*"] "Text Files"]
   AppSaveFileMan  -> [Model (model & sfmVis .~ True)]
   AppOpenFileKey  -> if checkNoPopups then [Event AppOpenFile]  else []
@@ -392,12 +406,12 @@ main = do
       ]
     -- model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def cfgFile
     -- Not using Ini in Model version:
-    model' cfgFile (Left txt)   = AppModel {-IUmista OUmista-} "" "" IM.empty "" False True False False False False txt def def cfgFile
-    model' cfgFile (Right iniX) = AppModel {-IUmista OUmista-} "" "" IM.empty "" False False False False False False "" (getIniValue iniX) def cfgFile
+    model' cfgFile (Left txt)   = AppModel {-IUmista OUmista-} "" "" IM.empty "" False True False False False False txt def def cfgFile Nothing
+    model' cfgFile (Right iniX) = AppModel {-IUmista OUmista-} "" "" IM.empty "" False False False False False False "" (getIniValue iniX) def cfgFile Nothing
     -- Using Ini in Model version:
     -- defIni = ini def configSpec
-    -- model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni cfgFile
-    -- model' cfgFile (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" iniX cfgFile
+    -- model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni cfgFile Nothing
+    -- model' cfgFile (Right iniX) = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" iniX cfgFile Nothing
 
 convertSFEvent :: SFEvent -> AppEvent
 convertSFEvent SFCancel = AppClosePopups
@@ -427,7 +441,22 @@ readFileMaybe fp = do
     Right txt -> return (Just txt)
     Left _    -> return Nothing
 
-
+readCSVMaybe :: Maybe Char -> FilePath -> IO ([CSVError], [(Maybe Text, Bool, InputOrth, OutputOrth, Text, Text)])
+readCSVMaybe mc fp = do
+  bs <- BL.readFile fp
+  csvRslt <- return $ case mc of
+    Nothing  -> parseCSV bs
+    (Just c) -> parseDSV False c bs
+  let csvErrs = csvErrors    csvRslt
+      csvTabl = csvTableFull csvRslt
+      csvList = map (map (T.decodeUtf8 . BL.toStrict . csvFieldContent)) csvTabl
+      (r:rs)  = csvList
+      hdrs    = map Just r
+      cols    = transpose rs
+      colsX   = map T.unlines cols
+      outs    = zipWithL hdrs colsX $ \hdr col ->
+                  (hdr, False, IUmista, OUmista, col, col)
+  return (csvErrs, outs)
 
 {-
 
@@ -435,9 +464,7 @@ readFileMaybe fp = do
 data AppModel = AppModel 
   { _inputFile  :: Text
   , _outputFile :: Text
-  -- , _inputHeaders :: [Text]
-  , _inputText  :: [(Maybe Text, Maybe (InputOrth, OutputOrth), Text, Text)]
-  -- , _outputText :: Text
+  , _inputText  :: IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text)
   , _currentDir :: Text -- Current Working Directory
   , _overwriteConfVis :: Bool
   , _errorAlertVis :: Bool
@@ -449,11 +476,8 @@ data AppModel = AppModel
   , _kwakConfig :: KwakConfigModel
   , _sfmHidden :: HiddenVal SaveFileModel
   , _cfgFilePath :: FilePath
-  -- , _csvHeaders :: [Bool]
-  -- , _csvSelection :: Int -- Which column is being worked on.
-  -- , _kwakConfig :: Ini KwakConfigModel
+  , _csvSep :: Maybe Char
   } deriving (Eq, Show)
-
 
 -}
 

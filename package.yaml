@@ -56,3 +56,17 @@ executables:
     - directory
     - filepath
     - tinyfiledialogs
+  kwak-gui-csv:
+    source-dirs:  app-csv
+    main:         Main.hs
+    ghc-options:
+    - -fwarn-incomplete-patterns
+    - -threaded
+    dependencies:
+    - kwak-gui
+    - bytestring
+    - containers
+    - directory
+    - filepath
+    - lazy-csv
+    - tinyfiledialogs

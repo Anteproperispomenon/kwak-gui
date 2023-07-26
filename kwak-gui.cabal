@@ -27,6 +27,7 @@ library
       Kwakwala.GUI.Info
       Kwakwala.GUI.Types
       Kwakwala.GUI.Widgets.AltAlert
+      Kwakwala.GUI.Widgets.MaybeWidget
       Kwakwala.GUI.Widgets.SaveFile
   other-modules:
       Paths_kwak_gui
@@ -51,6 +52,38 @@ library
     , monomer
     , text
     , text-show
+  default-language: Haskell2010
+
+executable kwak-gui-csv
+  main-is: Main.hs
+  other-modules:
+      Paths_kwak_gui
+  hs-source-dirs:
+      app-csv
+  default-extensions:
+      FlexibleInstances
+      ImportQualifiedPost
+      MultiWayIf
+      OverloadedStrings
+      ScopedTypeVariables
+      TypeApplications
+  ghc-options: -fwarn-incomplete-patterns -threaded
+  build-depends:
+      base >=4.7 && <5
+    , bytestring
+    , config-ini
+    , containers
+    , data-default
+    , directory
+    , filepath
+    , kwak-gui
+    , kwak-orth
+    , lazy-csv
+    , lens
+    , monomer
+    , text
+    , text-show
+    , tinyfiledialogs
   default-language: Haskell2010
 
 executable kwak-gui-file

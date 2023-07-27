@@ -2,6 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 
 module Main where
 
@@ -70,6 +71,11 @@ data AppModel = AppModel
   , _sfmVis    :: Bool
   , _csvVis    :: Bool
   , _saveVis   :: Bool
+  , _copyVis   :: Bool
+  , _copyIO    :: Bool
+  , _nextKey   :: Int
+  , _copyKey   :: Int
+  , _newHeader :: Text
   , _errorMsg :: Text
   , _kwakConfig :: KwakConfigModel
   , _sfmHidden :: HiddenVal SaveFileModel
@@ -107,6 +113,8 @@ data AppEvent
   | AppChangeIOrth Int  InputOrth
   | AppChangeOOrth Int OutputOrth
   | AppChangeModify Int Bool
+  | AppStartCopy Int
+  | AppCopyColumn Int
   deriving (Eq, Show)
 
 
@@ -177,6 +185,32 @@ buildUI wenv model = widgetTree where
           , button "Cancel" AppClosePopups
           ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
 
+    
+    --------------------------------
+    -- Copy Dialog
+    , popup_ copyVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $
+        box $ vstack
+          [ label "Copy Column" `styleBasic` [textSize 24, textCenter]
+          , spacer
+          , hstack $
+             [ label "Copy from"
+             , spacer
+             , optionButton "Input" False copyIO
+             , spacer
+             , optionButton "Output" True copyIO
+             ]
+          , spacer
+          , hstack $
+             [ label "Header: "
+             , spacer
+             , textField newHeader
+             ]
+          , spacer
+          , button "Copy Column" (AppCopyColumn (model ^. copyKey))
+          , spacer
+          , button "Cancel" AppClosePopups
+          ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
+
     , button "Select File" AppOpenFile
     , spacer
 
@@ -232,6 +266,7 @@ buildUI wenv model = widgetTree where
       , label "Output"
       -- , textDropdown (inputText . at key . _5) [OUmista, ONapa, OGrubb, OGeorgian, OBoas, OIsland, OIpa]
       , textDropdownV oorth (\oo -> AppChangeOOrth key oo) [OUmista, ONapa, OGrubb, OGeorgian, OBoas, OIsland, OIpa]
+      , button "Copy" (AppStartCopy key)
       , textAreaV_ otxt (\_ -> AppNull) [readOnly] 
           `styleBasic` [textFont $ selectFontO $ oorth]
       ]
@@ -312,7 +347,10 @@ handleEvent wenv node model evt = case evt of
 
   AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" ["*.txt", "*.*"] "Text Files" False]
   AppGotInput (errs, cols) -> 
-    let model' = (model & inputText .~ (IM.fromList (zip [1..] cols)))
+    let colMap = (IM.fromList (zip [1..] cols))
+        mmk    = IM.lookupMax colMap
+        (mk,_) = fromMaybe (1,undefined) mmk -- should be safe?
+        model' = (model & inputText .~ colMap & nextKey .~ (1+mk)) -- to get to next key
     in case errs of
       [] -> [Model model']
       es -> [Model (model' & openErrorVis .~ True & errorMsg .~ (T.pack $ unlines $ map ppCSVError es))]
@@ -326,6 +364,7 @@ handleEvent wenv node model evt = case evt of
       & sfmVis .~ False
       & csvVis .~ False
       & saveVis .~ False
+      & copyVis .~ False
       )]
 -- writeFileTask :: FilePath -> FilePath -> Bool -> Char -> IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text) -> AppEventResponse AppModel AppEvent
   AppWriteFile -> 
@@ -338,6 +377,42 @@ handleEvent wenv node model evt = case evt of
     , Model (model & saveVis .~ False)
     ]
   AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) ["*.csv", "*.*"] "Text Files"]
+
+  -- (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text)
+
+  (AppStartCopy  n) -> 
+    [ Model 
+      (model 
+        & copyVis .~ True
+        & copyKey .~ n
+        -- & 
+      )
+    ]
+
+  -- , orthI2O
+  -- , orthO2I
+
+
+  (AppCopyColumn n) -> 
+    let Just (mhdrx, mdfy, iorth, oorth, itxt, otxt) = IM.lookup n (model ^. inputText)
+        takFrom = model ^. copyIO
+        (theTxt, outTxt, io', oo') 
+          = if | (not mdfy)      -> (itxt, itxt, iorth, orthI2O iorth)
+               | (not takFrom)   -> (itxt, itxt, iorth, orthI2O iorth)
+               | (oorth == OIpa) -> (itxt, otxt, iorth, OIpa)
+               | otherwise       -> (otxt, otxt, fromJust $ orthO2I oorth, oorth)
+        newHdr = model ^. newHeader
+        newEntry = (Just newHdr, mdfy, io', oo', theTxt, outTxt)
+        newKey = model ^. nextKey
+    in [ Model 
+         (model 
+           & copyVis .~ False
+           & nextKey +~ 1
+           & inputText %~ IM.insert newKey newEntry
+           & newHeader .~ ""
+         )
+       ]
+
   {-
   AppSaveFileMan  -> [Model (model & sfmVis .~ True)]
   AppOpenFileKey  -> if checkNoPopups then [Event AppOpenFile]  else []
@@ -371,7 +446,8 @@ handleEvent wenv node model evt = case evt of
       || (model ^. configVis)
       || (model ^. sfmVis)
       || (model ^. csvVis)
-      || (model ^. saveVis))
+      || (model ^. saveVis)
+      || (model ^. copyVis))
       
     handleFile1 :: Maybe [Text] -> AppEvent
     handleFile1 Nothing = AppNull
@@ -441,8 +517,8 @@ main = do
       ]
     -- model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def cfgFile
     -- Not using Ini in Model version:
-    model' cfgFile (Left txt)   = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False True False False False False False False txt def def cfgFile Nothing
-    model' cfgFile (Right iniX) = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False False False False False False False False "" (getIniValue iniX) def cfgFile Nothing
+    model' cfgFile (Left txt)   = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False True  False False False False False False False True 1 0 "" txt def def cfgFile Nothing
+    model' cfgFile (Right iniX) = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False False False False False False False False False True 1 0 "" "" (getIniValue iniX) def cfgFile Nothing
     -- Using Ini in Model version:
     -- defIni = ini def configSpec
     -- model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni cfgFile Nothing

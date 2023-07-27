@@ -61,6 +61,7 @@ data AppModel = AppModel
   , _inputText  :: IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text)
   -- , _outputText :: Text
   , _currentDir :: Text -- Current Working Directory
+  , _readHeaders :: Bool
   , _overwriteConfVis :: Bool
   , _errorAlertVis :: Bool
   , _writeSuccessVis :: Bool
@@ -68,6 +69,7 @@ data AppModel = AppModel
   , _configVis :: Bool
   , _sfmVis    :: Bool
   , _csvVis    :: Bool
+  , _saveVis   :: Bool
   , _errorMsg :: Text
   , _kwakConfig :: KwakConfigModel
   , _sfmHidden :: HiddenVal SaveFileModel
@@ -118,24 +120,6 @@ buildUI wenv model = widgetTree where
   widgetTree = keystroke keyCommands $ vstack 
     [ button "Config" AppOpenConfig
     , spacer
-    {- do not re-open
-    , hstack
-      [ label "Input " `styleBasic` [textFont "Monotype"]
-      , spacer
-      , tooltipK ttUmista   $ optionButton_ "U'mista" IUmista (inputOrth) [onClick AppRefreshI]
-      , spacer
-      , tooltipK ttNapa     $ optionButton_ "NAPA" INapa (inputOrth) [onClick AppRefreshI]
-      , spacer
-      , tooltipK ttGrubb    $ optionButton_ "Grubb" IGrubb (inputOrth) [onClick AppRefreshI]
-      , spacer
-      , tooltipK ttBoas     $ optionButton_ "Boas" IBoas (inputOrth) [onClick AppRefreshI]
-      , spacer
-      , tooltipK ttGeorgian $ optionButton_ "Georgian" IGeorgian (inputOrth) [onClick AppRefreshI]
-      , spacer
-      , tooltipK ttIsland   $ optionButton_ "Island" IIsland (inputOrth) [onClick AppRefreshI]
-      ]
-    , spacer
-    -}
     , popup_ configVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $ 
         box $ vstack
           -- [ kwakConfigWidgetX (kwakConfig . iniValueL)
@@ -143,14 +127,17 @@ buildUI wenv model = widgetTree where
           , button "Done" AppDoneConfig
           ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
 
-    -- maybe re-open
+    --------------------------------
+    -- Select save file 
     , popup_ sfmVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $ 
         box (selectSaveFileH sfmHidden inputFile convertSFEvent)
           `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
     
+    --------------------------------
+    -- Open file options
     , popup_ csvVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $
         box $ vstack
-          [ label "CSV Settings" `styleBasic` [textSize 24, textCenter]
+          [ label "CSV Input Settings" `styleBasic` [textSize 24, textCenter]
           , spacer
           , hstack $
              [ label "Separator"
@@ -161,34 +148,38 @@ buildUI wenv model = widgetTree where
              , optionButton "Tab" (Just '\t') csvSep
              ]
           , spacer
+          , labeledCheckbox "Get Headers from File" readHeaders
+          , spacer
           , button "Import Data" AppSetInput2 -- don't have the model, but that's okay.
+          , spacer
+          , button "Cancel" AppClosePopups
+          ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
+    
+    --------------------------------
+    -- Save Dialog
+    , popup_ saveVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $
+        box $ vstack
+          [ label "CSV Output Settings" `styleBasic` [textSize 24, textCenter]
+          , spacer
+          , hstack $
+             [ label "Separator"
+             , optionButton "," Nothing csvSep 
+             , spacer
+             , optionButton ";" (Just ';') csvSep
+             , spacer
+             , optionButton "Tab" (Just '\t') csvSep
+             ]
+          , spacer
+          , labeledCheckbox "Save Headers to File" readHeaders
+          , spacer
+          , button "Save File" AppWriteFile
           , spacer
           , button "Cancel" AppClosePopups
           ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
 
     , button "Select File" AppOpenFile
-
-    {- do not re-open
-    , hstack
-      [ label "Output" `styleBasic` [textFont "Monotype"]
-      , spacer
-      , tooltipK ttUmista   $ optionButton_ "U'mista" OUmista (outputOrth) [onClick AppRefresh]
-      , spacer
-      , tooltipK ttNapa     $ optionButton_ "NAPA" ONapa (outputOrth) [onClick AppRefresh]
-      , spacer
-      , tooltipK ttGrubb    $ optionButton_ "Grubb" OGrubb (outputOrth) [onClick AppRefresh]
-      , spacer
-      , tooltipK ttBoas'    $ optionButton_ "Boas" OBoas (outputOrth) [onClick AppRefresh]
-      , spacer
-      , tooltipK ttGeorgian $ optionButton_ "Georgian" OGeorgian (outputOrth) [onClick AppRefresh]
-      , spacer
-      , tooltipK ttIsland   $ optionButton_ "Island" OIsland (outputOrth) [onClick AppRefresh]
-      , spacer
-      , tooltipK ttIpa      $ optionButton_ "IPA" OIpa (outputOrth) [onClick AppRefresh]
-      ]
-
     , spacer
-    -}
+
     {- -- maybe re-open
     , hgrid_ [childSpacing_ 8]
       [ vstack 
@@ -215,7 +206,7 @@ buildUI wenv model = widgetTree where
       ]-}
     , spreadColumns (model ^. inputText)
     , spacer
-    , button "Save File" AppWriteFile
+    , button "Save File" AppSaveFile
     , popup overwriteConfVis (confirmMsg "File already Exists. Overwrite?" AppOverWrite AppClosePopups)
     , popup errorAlertVis (altAlertMsg_ (model ^. errorMsg) AppClosePopups [titleCaption "Error"]) `styleBasic` [textFont "Monotype"]
     , popup writeSuccessVis (alertMsg "File Saved Successfully." AppClosePopups)
@@ -286,7 +277,7 @@ handleEvent wenv node model evt = case evt of
   -- AppIncrease -> [Model (model & clickCount +~ 1)]
   (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm & csvVis .~ True)]
   (AppSetInput2    ) -> let fnm = (model ^. inputFile) in [(Task $ AppGotInput <$> readCSVMaybe (model ^. csvSep) (T.unpack fnm)), (Model (model & csvVis .~ False))]
-  (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm & sfmVis .~ False)]
+  (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm & sfmVis .~ False & saveVis .~ True)]
   -- (AppChangeIOrth ky io) -> [Model (model & inputText . ix ky . _3 .~ io)]
   (AppChangeIOrth ky io) 
     -> [Model 
@@ -319,12 +310,12 @@ handleEvent wenv node model evt = case evt of
          )
        ]
 
-  
   AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" ["*.txt", "*.*"] "Text Files" False]
   AppGotInput (errs, cols) -> 
-    [ Model (model & inputText .~ (IM.fromList (zip [1..] cols)))
-    -- need to handle errors somehow.
-    ]
+    let model' = (model & inputText .~ (IM.fromList (zip [1..] cols)))
+    in case errs of
+      [] -> [Model model']
+      es -> [Model (model' & openErrorVis .~ True & errorMsg .~ (T.pack $ unlines $ map ppCSVError es))]
   AppClosePopups -> [Model 
     (model 
       & overwriteConfVis .~ False 
@@ -334,9 +325,20 @@ handleEvent wenv node model evt = case evt of
       & configVis .~ False 
       & sfmVis .~ False
       & csvVis .~ False
+      & saveVis .~ False
       )]
+-- writeFileTask :: FilePath -> FilePath -> Bool -> Char -> IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text) -> AppEventResponse AppModel AppEvent
+  AppWriteFile -> 
+    [writeFileTask 
+      (T.unpack (model ^. inputFile)) 
+      (T.unpack (model ^. outputFile)) 
+      (model ^. readHeaders) 
+      (fromMaybe ',' (model ^. csvSep)) 
+      (model ^. inputText)
+    , Model (model & saveVis .~ False)
+    ]
+  AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) ["*.csv", "*.*"] "Text Files"]
   {-
-  AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) ["*.txt", "*.*"] "Text Files"]
   AppSaveFileMan  -> [Model (model & sfmVis .~ True)]
   AppOpenFileKey  -> if checkNoPopups then [Event AppOpenFile]  else []
   AppSaveFileKey  -> if checkNoPopups then [Event AppSaveFile]  else []
@@ -368,7 +370,8 @@ handleEvent wenv node model evt = case evt of
       || (model ^. openErrorVis)
       || (model ^. configVis)
       || (model ^. sfmVis)
-      || (model ^. csvVis))
+      || (model ^. csvVis)
+      || (model ^. saveVis))
       
     handleFile1 :: Maybe [Text] -> AppEvent
     handleFile1 Nothing = AppNull
@@ -438,8 +441,8 @@ main = do
       ]
     -- model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def cfgFile
     -- Not using Ini in Model version:
-    model' cfgFile (Left txt)   = AppModel {-IUmista OUmista-} "" "" IM.empty "" False True False False False False False txt def def cfgFile Nothing
-    model' cfgFile (Right iniX) = AppModel {-IUmista OUmista-} "" "" IM.empty "" False False False False False False False "" (getIniValue iniX) def cfgFile Nothing
+    model' cfgFile (Left txt)   = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False True False False False False False False txt def def cfgFile Nothing
+    model' cfgFile (Right iniX) = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False False False False False False False False "" (getIniValue iniX) def cfgFile Nothing
     -- Using Ini in Model version:
     -- defIni = ini def configSpec
     -- model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni cfgFile Nothing
@@ -493,10 +496,52 @@ readCSVMaybe mc fp = do
                   (hdr, False, IUmista, OUmista, col, col)
       in return (csvErrs, outs)
   where
+    decodeAlt :: BS.ByteString -> Text
+    decodeAlt bs = case (T.decodeUtf8' bs) of
+      Left _    -> "<error>"
+      Right txt -> txt
     getContent :: CSVField -> Text
     -- can handle how quoting works here.
-    getContent (CSVField {csvFieldContent = bs, csvFieldQuoted = bl}) = T.decodeUtf8 $ BL.toStrict bs
+    getContent (CSVField {csvFieldContent = bs, csvFieldQuoted = bl}) = decodeAlt $ BL.toStrict bs
     getContent (CSVFieldError {}) = ""
+
+writeFileTask :: FilePath -> FilePath -> Bool -> Char -> IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text) -> AppEventResponse AppModel AppEvent
+writeFileTask inp fp hdrs spr mps
+  | (inp == "") = Event (AppWriteError $ "No input file selected yet. Choose an input file first.")
+  | (inp == fp) = Event (AppWriteError $ "Can't overwrite input file; choose a different name for output file.")
+  | (fp == "" ) = Event (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
+  | (fp == ".") = Event (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
+  | otherwise = Task $ do
+      bl <- doesFileExist fp
+      if bl
+        then return AppWriteExists
+        else do 
+          eEvt <- try @SomeException (TU.writeFile fp donList)
+          case eEvt of
+            Left x   -> return (AppWriteError $ T.pack (show x))
+            Right () -> return AppWriteSuccess
+  where
+    renderError :: Text -> Text
+    renderError err = "Error Trying to Save File:\n " <> err
+    -- Assume that output text is always correct.
+    dataList :: [(Maybe Text, Bool, InputOrth, OutputOrth, Text, Text)]
+    dataList = map snd $ IM.toList mps
+    newList :: [[Text]]
+    newList = forL dataList $ \(hdr,_,_,_,_,txt) ->
+      if hdrs
+        then ((fromMaybe "" hdr):(T.lines txt))
+        else (T.lines txt)
+    
+    altList :: [[Text]]
+    altList = transpose newList
+
+    finList :: [Text]
+    finList = map (T.intercalate (T.singleton spr)) altList
+    
+    donList :: Text
+    donList = (T.intercalate "\n" finList) <> "\n"
+
+
 
 {-
 data AppModel = AppModel 

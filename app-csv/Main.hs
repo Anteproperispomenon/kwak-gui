@@ -67,6 +67,7 @@ data AppModel = AppModel
   , _openErrorVis :: Bool
   , _configVis :: Bool
   , _sfmVis    :: Bool
+  , _csvVis    :: Bool
   , _errorMsg :: Text
   , _kwakConfig :: KwakConfigModel
   , _sfmHidden :: HiddenVal SaveFileModel
@@ -80,6 +81,7 @@ data AppModel = AppModel
 data AppEvent
   = AppInit
   | AppSetInput Text
+  | AppSetInput2
   | AppSetOutput Text
   | AppOpenFile -- triggers dialog
   | AppOpenFileKey -- when using the keystroke
@@ -104,6 +106,7 @@ data AppEvent
   | AppChangeOOrth Int OutputOrth
   | AppChangeModify Int Bool
   deriving (Eq, Show)
+
 
 makeLenses 'AppModel
 
@@ -145,6 +148,24 @@ buildUI wenv model = widgetTree where
         box (selectSaveFileH sfmHidden inputFile convertSFEvent)
           `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
     
+    , popup_ csvVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $
+        box $ vstack
+          [ label "CSV Settings" `styleBasic` [textSize 24, textCenter]
+          , spacer
+          , hstack $
+             [ label "Separator"
+             , optionButton "," Nothing csvSep 
+             , spacer
+             , optionButton ";" (Just ';') csvSep
+             , spacer
+             , optionButton "Tab" (Just '\t') csvSep
+             ]
+          , spacer
+          , button "Import Data" AppSetInput2 -- don't have the model, but that's okay.
+          , spacer
+          , button "Cancel" AppClosePopups
+          ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
+
     , button "Select File" AppOpenFile
 
     {- do not re-open
@@ -263,7 +284,8 @@ handleEvent wenv node model evt = case evt of
   AppInit -> [Task $ AppCurDir <$> getCurrentDirectory]
   AppNull -> []
   -- AppIncrease -> [Model (model & clickCount +~ 1)]
-  (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm), Task $ AppGotInput <$> readCSVMaybe (model ^. csvSep) (T.unpack fnm)]
+  (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm & csvVis .~ True)]
+  (AppSetInput2    ) -> let fnm = (model ^. inputFile) in [(Task $ AppGotInput <$> readCSVMaybe (model ^. csvSep) (T.unpack fnm)), (Model (model & csvVis .~ False))]
   (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm & sfmVis .~ False)]
   -- (AppChangeIOrth ky io) -> [Model (model & inputText . ix ky . _3 .~ io)]
   (AppChangeIOrth ky io) 
@@ -303,6 +325,16 @@ handleEvent wenv node model evt = case evt of
     [ Model (model & inputText .~ (IM.fromList (zip [1..] cols)))
     -- need to handle errors somehow.
     ]
+  AppClosePopups -> [Model 
+    (model 
+      & overwriteConfVis .~ False 
+      & errorAlertVis .~ False 
+      & writeSuccessVis .~ False 
+      & openErrorVis .~ False 
+      & configVis .~ False 
+      & sfmVis .~ False
+      & csvVis .~ False
+      )]
   {-
   AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) ["*.txt", "*.*"] "Text Files"]
   AppSaveFileMan  -> [Model (model & sfmVis .~ True)]
@@ -321,7 +353,6 @@ handleEvent wenv node model evt = case evt of
   AppOverWrite -> [Task $ overWriteFileTask (T.unpack (model ^. outputFile)) (model ^. outputText), Model (model & overwriteConfVis .~ False)] 
   AppRefresh  -> [Model (model & outputText .~ getConversion (model ^. inputText))]
   AppRefreshI -> [Model (model & outputText .~ getConversion (model ^. inputText) & inputText %~ modText)]
-  AppClosePopups -> [Model (model & overwriteConfVis .~ False & errorAlertVis .~ False & writeSuccessVis .~ False & openErrorVis .~ False & configVis .~ False & sfmVis .~ False)]
   (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
   AppDoneConfig -> [Event AppRefresh, Model (model & configVis .~ False), Task $ writeConfigTask (model ^. cfgFilePath) (model ^. kwakConfig)]
   -- AppDoneConfig -> let newCfg = selfUpdate (model ^. kwakConfig)
@@ -336,7 +367,8 @@ handleEvent wenv node model evt = case evt of
       || (model ^. writeSuccessVis)
       || (model ^. openErrorVis)
       || (model ^. configVis)
-      || (model ^. sfmVis))
+      || (model ^. sfmVis)
+      || (model ^. csvVis))
       
     handleFile1 :: Maybe [Text] -> AppEvent
     handleFile1 Nothing = AppNull
@@ -406,8 +438,8 @@ main = do
       ]
     -- model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def cfgFile
     -- Not using Ini in Model version:
-    model' cfgFile (Left txt)   = AppModel {-IUmista OUmista-} "" "" IM.empty "" False True False False False False txt def def cfgFile Nothing
-    model' cfgFile (Right iniX) = AppModel {-IUmista OUmista-} "" "" IM.empty "" False False False False False False "" (getIniValue iniX) def cfgFile Nothing
+    model' cfgFile (Left txt)   = AppModel {-IUmista OUmista-} "" "" IM.empty "" False True False False False False False txt def def cfgFile Nothing
+    model' cfgFile (Right iniX) = AppModel {-IUmista OUmista-} "" "" IM.empty "" False False False False False False False "" (getIniValue iniX) def cfgFile Nothing
     -- Using Ini in Model version:
     -- defIni = ini def configSpec
     -- model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni cfgFile Nothing

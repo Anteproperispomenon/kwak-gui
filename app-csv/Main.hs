@@ -73,10 +73,11 @@ data AppModel = AppModel
   , _saveVis   :: Bool
   , _copyVis   :: Bool
   , _copyIO    :: Bool
+  , _delCfmVis :: Bool
   , _nextKey   :: Int
   , _copyKey   :: Int
   , _newHeader :: Text
-  , _errorMsg :: Text
+  , _errorMsg  :: Text
   , _kwakConfig :: KwakConfigModel
   , _sfmHidden :: HiddenVal SaveFileModel
   , _cfgFilePath :: FilePath
@@ -115,6 +116,9 @@ data AppEvent
   | AppChangeModify Int Bool
   | AppStartCopy Int
   | AppCopyColumn Int
+  | AppDeleteColumn  Int
+  | AppDeleteColumn2 Int
+  | AppError Text
   deriving (Eq, Show)
 
 
@@ -185,7 +189,25 @@ buildUI wenv model = widgetTree where
           , button "Cancel" AppClosePopups
           ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
 
+    --------------------------------
+    -- Confirm Delete
     
+    , popup_ delCfmVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $ 
+        box $ vstack
+          [ label_ ("Are you sure you want\nto delete this column?" ) [multiline] `styleBasic` [textSize 20, textCenter]
+          , spacer
+          , hstack $
+             [ label "Column"
+             , spacer
+             , textFieldV_ (getHeaderText model (model ^. copyKey)) (\_ -> AppNull) [readOnly]
+             ]
+          , filler
+          , button "Delete" (AppDeleteColumn2 (model ^. copyKey))
+          , spacer
+          , button "Cancel" AppClosePopups
+          ]
+          `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
+
     --------------------------------
     -- Copy Dialog
     , popup_ copyVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $
@@ -238,7 +260,7 @@ buildUI wenv model = widgetTree where
         ]
       
       ]-}
-    , spreadColumns (model ^. inputText)
+    , hscroll $ spreadColumns (model ^. inputText)
     , spacer
     , button "Save File" AppSaveFile
     , popup overwriteConfVis (confirmMsg "File already Exists. Overwrite?" AppOverWrite AppClosePopups)
@@ -256,17 +278,25 @@ buildUI wenv model = widgetTree where
       ]
   -- okay
   spreadColumns :: IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text) -> WidgetNode AppModel AppEvent
-  spreadColumns strs = hgrid $ forWithKey strs $ \key (hdr, cvtble, iorth, oorth, itxt, otxt) ->
+  spreadColumns strs = hgrid_ [childSpacing_ 2] $ forWithKey strs $ \key (hdr, cvtble, iorth, oorth, itxt, otxt) ->
     vstack $
       [ label $ fromMaybe ("Column " <> showt key) hdr
+      , spacer
       , labeledCheckboxV "Modify?" cvtble (\bl -> AppChangeModify key bl)
+      , spacer
       , label "Input"
       -- , textDropdown (inputText . at key . _4) [IUmista, INapa, IGrubb, IGeorgian, IBoas, IIsland]
       , textDropdownV iorth (\io -> AppChangeIOrth key io) [IUmista, INapa, IGrubb, IGeorgian, IBoas, IIsland]
+      , spacer
       , label "Output"
       -- , textDropdown (inputText . at key . _5) [OUmista, ONapa, OGrubb, OGeorgian, OBoas, OIsland, OIpa]
       , textDropdownV oorth (\oo -> AppChangeOOrth key oo) [OUmista, ONapa, OGrubb, OGeorgian, OBoas, OIsland, OIpa]
-      , button "Copy" (AppStartCopy key)
+      , spacer
+      , hgrid_ [childSpacing_ 2] $ 
+         [ button "Copy" (AppStartCopy key)
+         , button "Delete" (AppDeleteColumn key)
+         ]
+      , spacer
       , textAreaV_ otxt (\_ -> AppNull) [readOnly] 
           `styleBasic` [textFont $ selectFontO $ oorth]
       ]
@@ -280,6 +310,16 @@ buildUI wenv model = widgetTree where
           , textAreaV_ txt (\_ -> AppNull) [readOnly]
           ]
   -}
+
+getHeaderText :: AppModel -> Int -> Text
+getHeaderText model ky
+  | Nothing <- rslt
+  = "<error>"
+  | Just (Nothing, _, _, _, _, _) <- rslt
+  = "Column #" <> showt ky
+  | Just (Just txt, _, _, _, _, _) <- rslt
+  = txt
+  where rslt = IM.lookup ky (model ^. inputText)
 
 forWithKey :: IM.IntMap a -> (Int -> a -> b) -> IM.IntMap b
 forWithKey = flip IM.mapWithKey
@@ -311,7 +351,7 @@ handleEvent wenv node model evt = case evt of
   AppNull -> []
   -- AppIncrease -> [Model (model & clickCount +~ 1)]
   (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm & csvVis .~ True)]
-  (AppSetInput2    ) -> let fnm = (model ^. inputFile) in [(Task $ AppGotInput <$> readCSVMaybe (model ^. csvSep) (T.unpack fnm)), (Model (model & csvVis .~ False))]
+  (AppSetInput2    ) -> let fnm = (model ^. inputFile) in [(Task $ AppGotInput <$> readCSVMaybe (model ^. readHeaders) (model ^. csvSep) (T.unpack fnm)), (Model (model & csvVis .~ False))]
   (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm & sfmVis .~ False & saveVis .~ True)]
   -- (AppChangeIOrth ky io) -> [Model (model & inputText . ix ky . _3 .~ io)]
   (AppChangeIOrth ky io) 
@@ -365,6 +405,7 @@ handleEvent wenv node model evt = case evt of
       & csvVis .~ False
       & saveVis .~ False
       & copyVis .~ False
+      & delCfmVis .~ False
       )]
 -- writeFileTask :: FilePath -> FilePath -> Bool -> Char -> IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text) -> AppEventResponse AppModel AppEvent
   AppWriteFile -> 
@@ -389,34 +430,44 @@ handleEvent wenv node model evt = case evt of
       )
     ]
 
-  -- , orthI2O
-  -- , orthO2I
-
-
   (AppCopyColumn n) -> 
-    let Just (mhdrx, mdfy, iorth, oorth, itxt, otxt) = IM.lookup n (model ^. inputText)
-        takFrom = model ^. copyIO
-        (theTxt, outTxt, io', oo') 
-          = if | (not mdfy)      -> (itxt, itxt, iorth, orthI2O iorth)
-               | (not takFrom)   -> (itxt, itxt, iorth, orthI2O iorth)
-               | (oorth == OIpa) -> (itxt, otxt, iorth, OIpa)
-               | otherwise       -> (otxt, otxt, fromJust $ orthO2I oorth, oorth)
-        newHdr = model ^. newHeader
-        newEntry = (Just newHdr, mdfy, io', oo', theTxt, outTxt)
-        newKey = model ^. nextKey
-    in [ Model 
-         (model 
-           & copyVis .~ False
-           & nextKey +~ 1
-           & inputText %~ IM.insert newKey newEntry
-           & newHeader .~ ""
-         )
-       ]
+    case (IM.lookup n (model ^. inputText)) of
+      Nothing -> [Event $ AppError $ "Couldn't lookup column #" <> showt n <> "."]
+      Just (mhdrx, mdfy, iorth, oorth, itxt, otxt) ->
+        let takFrom = model ^. copyIO
+            (theTxt, outTxt, io', oo') 
+              = if | (not mdfy)      -> (itxt, itxt, iorth, orthI2O iorth)
+                   | (not takFrom)   -> (itxt, itxt, iorth, orthI2O iorth)
+                   | (oorth == OIpa) -> (itxt, otxt, iorth, OIpa)
+                   | otherwise       -> (otxt, otxt, fromJust $ orthO2I oorth, oorth)
+            newHdr = model ^. newHeader
+            newEntry = (Just newHdr, mdfy, io', oo', theTxt, outTxt)
+            newKey = model ^. nextKey
+        in [ Model 
+             (model 
+               & copyVis .~ False
+               & nextKey +~ 1
+               & inputText %~ IM.insert newKey newEntry
+               & newHeader .~ ""
+             )
+           ]
+  
+  (AppDeleteColumn  n) -> [ Model (model & delCfmVis .~ True & copyKey .~ n)]
+  (AppDeleteColumn2 n) -> 
+    [ Model
+        (model
+          & delCfmVis .~ False
+          & inputText %~ IM.delete n
+        )
 
-  {-
-  AppSaveFileMan  -> [Model (model & sfmVis .~ True)]
+    ]
+
+  AppOpenConfig -> [Model (model & configVis .~ True )]
+  AppDoneConfig -> [Event AppRefresh, Model (model & configVis .~ False), Task $ writeConfigTask (model ^. cfgFilePath) (model ^. kwakConfig)]
   AppOpenFileKey  -> if checkNoPopups then [Event AppOpenFile]  else []
   AppSaveFileKey  -> if checkNoPopups then [Event AppSaveFile]  else []
+  {-
+  AppSaveFileMan  -> [Model (model & sfmVis .~ True)]
   AppWriteFileKey -> if checkNoPopups then [Event AppWriteFile] else []
   AppGotInput mtxt -> case mtxt of
      (Just txt) -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]
@@ -431,10 +482,9 @@ handleEvent wenv node model evt = case evt of
   AppRefresh  -> [Model (model & outputText .~ getConversion (model ^. inputText))]
   AppRefreshI -> [Model (model & outputText .~ getConversion (model ^. inputText) & inputText %~ modText)]
   (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
-  AppDoneConfig -> [Event AppRefresh, Model (model & configVis .~ False), Task $ writeConfigTask (model ^. cfgFilePath) (model ^. kwakConfig)]
   -- AppDoneConfig -> let newCfg = selfUpdate (model ^. kwakConfig)
   --   in [Model (model & configVis .~ False & kwakConfig .~ newCfg)] -- Add task here to update config file.
-  AppOpenConfig -> [Model (model & configVis .~ True )]
+  
   -}
   _ -> []
   where 
@@ -447,7 +497,8 @@ handleEvent wenv node model evt = case evt of
       || (model ^. sfmVis)
       || (model ^. csvVis)
       || (model ^. saveVis)
-      || (model ^. copyVis))
+      || (model ^. copyVis)
+      || (model ^. delCfmVis))
       
     handleFile1 :: Maybe [Text] -> AppEvent
     handleFile1 Nothing = AppNull
@@ -501,7 +552,7 @@ main = do
   startApp (model' cfgFile eConf) handleEvent buildUI config
   where
     config = [
-      appWindowTitle "Kwak'wala Orthography Conversion (File)",
+      appWindowTitle "Kwak'wala Orthography Conversion (CSV)",
       appWindowIcon "./assets/images/icon.png",
       appTheme darkTheme,
       appFontDef "Regular" "./assets/fonts/Roboto-Regular.ttf",
@@ -517,8 +568,8 @@ main = do
       ]
     -- model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def cfgFile
     -- Not using Ini in Model version:
-    model' cfgFile (Left txt)   = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False True  False False False False False False False True 1 0 "" txt def def cfgFile Nothing
-    model' cfgFile (Right iniX) = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False False False False False False False False False True 1 0 "" "" (getIniValue iniX) def cfgFile Nothing
+    model' cfgFile (Left txt)   = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False True  False False False False False False False True False 1 0 "" txt def def cfgFile Nothing
+    model' cfgFile (Right iniX) = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False False False False False False False False False True False 1 0 "" "" (getIniValue iniX) def cfgFile Nothing
     -- Using Ini in Model version:
     -- defIni = ini def configSpec
     -- model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni cfgFile Nothing
@@ -552,8 +603,8 @@ readFileMaybe fp = do
     Right txt -> return (Just txt)
     Left _    -> return Nothing
 
-readCSVMaybe :: Maybe Char -> FilePath -> IO ([CSVError], [(Maybe Text, Bool, InputOrth, OutputOrth, Text, Text)])
-readCSVMaybe mc fp = do
+readCSVMaybe :: Bool -> Maybe Char -> FilePath -> IO ([CSVError], [(Maybe Text, Bool, InputOrth, OutputOrth, Text, Text)])
+readCSVMaybe rdHdrs mc fp = do
   bs <- BL.readFile fp
   csvRslt <- return $ case mc of
     Nothing  -> parseCSV bs
@@ -565,8 +616,9 @@ readCSVMaybe mc fp = do
   case csvList of
     [] -> return (csvErrs, [])
     (r:rs) -> let
-      hdrs    = map Just r
-      cols    = transpose rs
+      hdrs    = if rdHdrs then (map Just r) else (map (const Nothing) r)
+      rs'     = if rdHdrs then rs else (r:rs)
+      cols    = transpose rs'
       colsX   = map T.unlines cols
       outs    = zipWithL hdrs colsX $ \hdr col ->
                   (hdr, False, IUmista, OUmista, col, col)
@@ -617,7 +669,12 @@ writeFileTask inp fp hdrs spr mps
     donList :: Text
     donList = (T.intercalate "\n" finList) <> "\n"
 
-
+writeConfigTask :: FilePath -> KwakConfigModel -> IO AppEvent
+writeConfigTask fp kcm = do
+  rslt <- updateConfigFile' fp kcm
+  case rslt of
+    Just err -> return $ AppWriteError ("Error writing config file:\n" <> err)
+    Nothing  -> return AppNull
 
 {-
 data AppModel = AppModel 

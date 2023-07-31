@@ -244,30 +244,6 @@ buildUI wenv model = widgetTree where
     , button "Select File" AppOpenFile
     , spacer
 
-    {- -- maybe re-open
-    , hgrid_ [childSpacing_ 8]
-      [ vstack 
-        [ button "Select File" AppOpenFile
-        , spacer
-        , (textField_ inputFile [readOnly])
-        , spacer
-        , (textArea_ inputText [readOnly]) `styleBasic` [textFont $ selectFontI $ model ^. inputOrth]
-        ]
-      -- , spacer
-      , vstack
-        [ hstack 
-           [ box_ [expandContent, sizeReqUpdater sizeReqX] 
-               (button "Choose Destination" AppSaveFile)
-           , spacer -- filler
-           , button "(Manual)" AppSaveFileMan
-           ]
-        , spacer
-        , (textField_ outputFile [readOnly])
-        , spacer
-        , (textArea_ outputText [readOnly]) `styleBasic` [textFont $ selectFontO $ model ^. outputOrth]
-        ]
-      
-      ]-}
     , hscroll $ spreadColumns (model ^. inputText)
     , spacer
     , hstack $
@@ -290,7 +266,8 @@ buildUI wenv model = widgetTree where
       ]
   -- Maybe in the future use model parameters
   -- to change how the columns are rendered, e.g.
-  -- 
+  -- have a grid of TextFields rather than one
+  -- big TextArea.
   spreadColumns :: IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text) -> WidgetNode AppModel AppEvent
   spreadColumns strs = hgrid_ [childSpacing_ 2] $ forWithKey strs $ \key (hdr, cvtble, iorth, oorth, itxt, otxt) ->
     -- dropTarget (\n -> AppSwapColumn n key) $ vstack $
@@ -506,7 +483,7 @@ handleEvent wenv node model evt = case evt of
   -- First one is the column to move,
   -- second is the "destination".
   (AppMoveColumn key dst) ->
-    if (key == dst)
+    if (key == dst || key == (dst - 1))
       then []
       else let itxt = model ^. inputText
            in case (IM.lookup key itxt, IM.lookup dst itxt, IM.lookup (dst-1) itxt) of
@@ -531,8 +508,6 @@ handleEvent wenv node model evt = case evt of
                        newMp' = newMp & at dst .~ rsltKey
                        -- newMp' = IM.insert dst rsltKey newMp
                    in [Model (model & inputText .~ newMp')]
-
-
   
   (AppDeleteColumn  n) -> [ Model (model & delCfmVis .~ True & copyKey .~ n)]
   (AppDeleteColumn2 n) -> 
@@ -555,6 +530,9 @@ handleEvent wenv node model evt = case evt of
   AppSaveFileKey  -> if checkNoPopups then [Event AppSaveFile]  else []
 
   AppSaveFileMan  -> [Model (model & sfmVis .~ True)]
+  
+  AppWriteSuccess -> [Model (model & writeSuccessVis .~ True)]
+
 
   {-
   AppWriteFileKey -> if checkNoPopups then [Event AppWriteFile] else []
@@ -563,7 +541,7 @@ handleEvent wenv node model evt = case evt of
      Nothing    -> [Model (model & openErrorVis .~ True)]
   -- Technically not a task anymore; it's just a bit too complicated to fit here.
   -- _ -> []
-  AppWriteSuccess -> [Model (model & writeSuccessVis .~ True)] -- Display a pop-up message, maybe?
+  
   AppWriteExists -> [Model (model & overwriteConfVis .~ True)]
   (AppWriteError err) -> [Model (model & errorMsg .~ (renderError err) & errorAlertVis .~ True), tlogErrTask err]
   AppOverWrite -> [Task $ overWriteFileTask (T.unpack (model ^. outputFile)) (model ^. outputText), Model (model & overwriteConfVis .~ False)] 
@@ -728,14 +706,13 @@ writeFileTask inp fp hdrs spr mps
   | (fp == "" ) = Event (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
   | (fp == ".") = Event (AppWriteError $ "No output file selected; click \"Choose Destination\" to select an output file.")
   | otherwise = Task $ do
-      bl <- doesFileExist fp
-      if bl
-        then return AppWriteExists
-        else do 
-          eEvt <- try @SomeException (TU.writeFile fp donList)
-          case eEvt of
-            Left x   -> return (AppWriteError $ T.pack (show x))
-            Right () -> return AppWriteSuccess
+      -- bl <- doesFileExist fp -- moved to different phase
+      -- if bl
+        -- then return AppWriteExists
+      eEvt <- try @SomeException (TU.writeFile fp donList)
+      case eEvt of
+        Left x   -> return (AppWriteError $ T.pack (show x))
+        Right () -> return AppWriteSuccess
   where
     renderError :: Text -> Text
     renderError err = "Error Trying to Save File:\n " <> err

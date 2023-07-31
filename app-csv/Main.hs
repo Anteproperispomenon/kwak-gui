@@ -119,6 +119,7 @@ data AppEvent
   | AppCopyColumn Int
   | AppDeleteColumn  Int
   | AppDeleteColumn2 Int
+  | AppSwapColumn Int Int
   | AppError Text
   deriving (Eq, Show)
 
@@ -287,8 +288,10 @@ buildUI wenv model = widgetTree where
   -- 
   spreadColumns :: IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text) -> WidgetNode AppModel AppEvent
   spreadColumns strs = hgrid_ [childSpacing_ 2] $ forWithKey strs $ \key (hdr, cvtble, iorth, oorth, itxt, otxt) ->
-    vstack $
+    dropTarget (\n -> AppSwapColumn n key) $ vstack $
       [ label $ fromMaybe ("Column " <> showt key) hdr
+      , spacer
+      , draggable key $ box (label "Swap Column") `styleBasic` [bgColor darkSlateGray, padding 3, border 1 slateGray, radius 3]
       , spacer
       , tooltipK modifyTT $ labeledCheckboxV "Modify?" cvtble (\bl -> AppChangeModify key bl)
       , spacer
@@ -351,6 +354,10 @@ zipWithL l1 l2 f = zipWith f l1 l2
 zipWith3L :: [a] -> [b] -> [c] -> (a -> b -> c -> d) -> [d]
 zipWith3L l1 l2 l3 f = zipWith3 f l1 l2 l3
 
+sizeReqX :: (SizeReq, SizeReq) -> (SizeReq, SizeReq)
+sizeReqX (szrW, szrH)
+  = (szrW {_szrFlex = 5, _szrExtra = 5, _szrFactor = 0.005}, szrH)
+
 {-
   | AppChangeIOrth Int  InputOrth
   | AppChangeOOrth Int OutputOrth
@@ -375,7 +382,6 @@ handleEvent wenv node model evt = case evt of
       then [Model (model & overwriteConfVis .~ True)]
       else [Model (model & saveVis .~ True)]
   AppOverWrite -> [Model (model & overwriteConfVis .~ False & saveVis .~ True)]
-  -- (AppChangeIOrth ky io) -> [Model (model & inputText . ix ky . _3 .~ io)]
   (AppChangeIOrth ky io) 
     -> [Model 
          (model & inputText . at ky %~ \case
@@ -384,7 +390,6 @@ handleEvent wenv node model evt = case evt of
            Just (hdr, False, oldIo, oldOo, itxt, otxt) -> Just (hdr, False, io, oldOo, itxt, otxt)
          )
        ]
-  -- (AppChangeOOrth ky oo) -> [Model (model & inputText . ix ky . _4 .~ oo)]
   (AppChangeOOrth ky oo) 
     -> [Model 
          (model & inputText . at ky %~ \case
@@ -393,7 +398,6 @@ handleEvent wenv node model evt = case evt of
            Just (hdr, False, oldIo, oldOo, itxt, otxt) -> Just (hdr, False, oldIo, oo, itxt, otxt)
          )
        ]
-  -- (AppChangeModify ky b) -> [Model (model & inputText . ix ky . _2 .~ b )]
   (AppChangeModify ky True) 
     -> [Model 
          (model & inputText . at ky %~ \case
@@ -420,11 +424,11 @@ handleEvent wenv node model evt = case evt of
       es -> [Model (model' & openErrorVis .~ True & errorMsg .~ (T.pack $ unlines $ map ppCSVError es))]
   AppClosePopups -> [Model 
     (model 
-      & overwriteConfVis .~ False 
-      & errorAlertVis .~ False 
-      & writeSuccessVis .~ False 
-      & openErrorVis .~ False 
-      & configVis .~ False 
+      & overwriteConfVis .~ False
+      & errorAlertVis .~ False
+      & writeSuccessVis .~ False
+      & openErrorVis .~ False
+      & configVis .~ False
       & sfmVis .~ False
       & csvVis .~ False
       & saveVis .~ False
@@ -476,6 +480,21 @@ handleEvent wenv node model evt = case evt of
              )
            ]
   
+  (AppSwapColumn m n) ->
+    if (m == n)
+      then []
+      else let itxt = model ^. inputText
+           in case (IM.lookup m itxt, IM.lookup n itxt) of
+                (Nothing, _) -> []
+                (_, Nothing) -> []
+                (rsltM, rsltN) ->
+                  [ Model 
+                      (model
+                        & inputText . at n .~ rsltM
+                        & inputText . at m .~ rsltN
+                      )
+                  ]
+
   (AppDeleteColumn  n) -> [ Model (model & delCfmVis .~ True & copyKey .~ n)]
   (AppDeleteColumn2 n) -> 
     [ Model

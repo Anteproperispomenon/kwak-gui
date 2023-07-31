@@ -276,20 +276,20 @@ buildUI wenv model = widgetTree where
       , ("Ctrl-w", AppWriteFileKey)
       , ("Cmd-w" , AppWriteFileKey)
       ]
-  -- okay
+  -- Maybe in the future use model parameters
+  -- to change how the columns are rendered, e.g.
+  -- 
   spreadColumns :: IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text) -> WidgetNode AppModel AppEvent
   spreadColumns strs = hgrid_ [childSpacing_ 2] $ forWithKey strs $ \key (hdr, cvtble, iorth, oorth, itxt, otxt) ->
     vstack $
       [ label $ fromMaybe ("Column " <> showt key) hdr
       , spacer
-      , labeledCheckboxV "Modify?" cvtble (\bl -> AppChangeModify key bl)
+      , tooltipK modifyTT $ labeledCheckboxV "Modify?" cvtble (\bl -> AppChangeModify key bl)
       , spacer
       , label "Input"
-      -- , textDropdown (inputText . at key . _4) [IUmista, INapa, IGrubb, IGeorgian, IBoas, IIsland]
       , textDropdownV iorth (\io -> AppChangeIOrth key io) [IUmista, INapa, IGrubb, IGeorgian, IBoas, IIsland]
       , spacer
       , label "Output"
-      -- , textDropdown (inputText . at key . _5) [OUmista, ONapa, OGrubb, OGeorgian, OBoas, OIsland, OIpa]
       , textDropdownV oorth (\oo -> AppChangeOOrth key oo) [OUmista, ONapa, OGrubb, OGeorgian, OBoas, OIsland, OIpa]
       , spacer
       , hgrid_ [childSpacing_ 2] $ 
@@ -300,6 +300,8 @@ buildUI wenv model = widgetTree where
       , textAreaV_ otxt (\_ -> AppNull) [readOnly] 
           `styleBasic` [textFont $ selectFontO $ oorth]
       ]
+  modifyTT :: Text
+  modifyTT = "Whether to apply an orthography conversion to this column.\nLeave this unchecked for e.g. English columns."  
   
   {-
   spreadColumns :: [String] -> [Text] -> WidgetNode AppModel AppEvent
@@ -349,7 +351,6 @@ handleEvent
 handleEvent wenv node model evt = case evt of
   AppInit -> [Task $ AppCurDir <$> getCurrentDirectory]
   AppNull -> []
-  -- AppIncrease -> [Model (model & clickCount +~ 1)]
   (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm & csvVis .~ True)]
   (AppSetInput2    ) -> let fnm = (model ^. inputFile) in [(Task $ AppGotInput <$> readCSVMaybe (model ^. readHeaders) (model ^. csvSep) (T.unpack fnm)), (Model (model & csvVis .~ False))]
   (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm & sfmVis .~ False & saveVis .~ True)]
@@ -385,7 +386,7 @@ handleEvent wenv node model evt = case evt of
          )
        ]
 
-  AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" ["*.txt", "*.*"] "Text Files" False]
+  AppOpenFile -> [Task $ handleFile1 <$> openFileDialog "Open Input File" "" ["*.csv", "*.tsv", "*.*"] "CSV Files" False]
   AppGotInput (errs, cols) -> 
     let colMap = (IM.fromList (zip [1..] cols))
         mmk    = IM.lookupMax colMap
@@ -417,7 +418,7 @@ handleEvent wenv node model evt = case evt of
       (model ^. inputText)
     , Model (model & saveVis .~ False)
     ]
-  AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) ["*.csv", "*.*"] "Text Files"]
+  AppSaveFile -> [Task $ handleFile2 <$> saveFileDialog "Select Output File" (model ^. inputFile) ["*.csv", "*.tsv", "*.*"] "CSV Files"]
 
   -- (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text)
 
@@ -464,6 +465,9 @@ handleEvent wenv node model evt = case evt of
 
   AppOpenConfig -> [Model (model & configVis .~ True )]
   AppDoneConfig -> [Event AppRefresh, Model (model & configVis .~ False), Task $ writeConfigTask (model ^. cfgFilePath) (model ^. kwakConfig)]
+
+  (AppError err) -> [Model (model & errorAlertVis .~ True & errorMsg .~ err)]
+
   AppOpenFileKey  -> if checkNoPopups then [Event AppOpenFile]  else []
   AppSaveFileKey  -> if checkNoPopups then [Event AppSaveFile]  else []
   {-
@@ -474,7 +478,6 @@ handleEvent wenv node model evt = case evt of
      Nothing    -> [Model (model & openErrorVis .~ True)]
   -- Technically not a task anymore; it's just a bit too complicated to fit here.
   -- _ -> []
-  AppWriteFile -> [writeFileTask (T.unpack (model ^. inputFile)) (T.unpack (model ^. outputFile)) (model ^. outputText)]
   AppWriteSuccess -> [Model (model & writeSuccessVis .~ True)] -- Display a pop-up message, maybe?
   AppWriteExists -> [Model (model & overwriteConfVis .~ True)]
   (AppWriteError err) -> [Model (model & errorMsg .~ (renderError err) & errorAlertVis .~ True), tlogErrTask err]

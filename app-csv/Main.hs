@@ -152,8 +152,9 @@ buildUI wenv model = widgetTree where
         box $ vstack
           [ label "CSV Input Settings" `styleBasic` [textSize 24, textCenter]
           , spacer
-          , hstack $
+          , box $ hstack $
              [ label "Separator"
+             , spacer
              , optionButton "," Nothing csvSep 
              , spacer
              , optionButton ";" (Just ';') csvSep
@@ -161,7 +162,9 @@ buildUI wenv model = widgetTree where
              , optionButton "Tab" (Just '\t') csvSep
              ]
           , spacer
-          , labeledCheckbox "Get Headers from File" readHeaders
+          -- The tooltip doesn't work. May be because it is embedded in a popup.
+          , tooltipFK headerInTT $ box $ labeledCheckbox "Get Headers from File" readHeaders
+          -- , tooltipK headerInTT $ toggleButton "Get Headers from File" readHeaders
           , spacer
           , button "Import Data" AppSetInput2 -- don't have the model, but that's okay.
           , spacer
@@ -174,8 +177,9 @@ buildUI wenv model = widgetTree where
         box $ vstack
           [ label "CSV Output Settings" `styleBasic` [textSize 24, textCenter]
           , spacer
-          , hstack $
+          , box $ hstack $
              [ label "Separator"
+             , spacer
              , optionButton "," Nothing csvSep 
              , spacer
              , optionButton ";" (Just ';') csvSep
@@ -183,7 +187,8 @@ buildUI wenv model = widgetTree where
              , optionButton "Tab" (Just '\t') csvSep
              ]
           , spacer
-          , labeledCheckbox "Save Headers to File" readHeaders
+          -- The tooltip doesn't work. May be because it is embedded in a popup.
+          , tooltipFK headerOutTT $ labeledCheckbox "Save Headers to File" readHeaders
           , spacer
           , button "Save File" AppWriteFile
           , spacer
@@ -303,7 +308,17 @@ buildUI wenv model = widgetTree where
       ]
   modifyTT :: Text
   modifyTT = "Whether to apply an orthography conversion to this column.\nLeave this unchecked for e.g. English columns."  
-  
+  headerInTT :: Text
+  headerInTT = 
+    "If selected, use the first entry in each column as the header\n"
+      <> "for that column. Otherwise, just use generic header names.\n"
+      <> "Leave this unselected if you want to convert the header names\n"
+      <> "to other orthographies."
+  headerOutTT :: Text
+  headerOutTT = 
+    "If selected, save the header names as the first entry in each column.\n"
+      <> "In general, use the same setting for this as you did when importing."
+
   {-
   spreadColumns :: [String] -> [Text] -> WidgetNode AppModel AppEvent
   spreadColumns hdrs txts
@@ -450,7 +465,7 @@ handleEvent wenv node model evt = case evt of
                    | (oorth == OIpa) -> (itxt, otxt, iorth, OIpa)
                    | otherwise       -> (otxt, otxt, fromJust $ orthO2I oorth, oorth)
             newHdr = model ^. newHeader
-            newEntry = (Just newHdr, mdfy, io', oo', theTxt, outTxt)
+            newEntry = (nothifyText newHdr, mdfy, io', oo', theTxt, outTxt)
             newKey = model ^. nextKey
         in [ Model 
              (model 
@@ -500,7 +515,7 @@ handleEvent wenv node model evt = case evt of
   _ -> []
   where 
     checkNoPopups :: Bool
-    checkNoPopups = not ((model ^. overwriteConfVis) 
+    checkNoPopups = not ((model ^. overwriteConfVis)
       || (model ^. errorAlertVis)
       || (model ^. writeSuccessVis)
       || (model ^. openErrorVis)
@@ -686,6 +701,11 @@ writeConfigTask fp kcm = do
   case rslt of
     Just err -> return $ AppWriteError ("Error writing config file:\n" <> err)
     Nothing  -> return AppNull
+
+nothifyText :: Text -> Maybe Text
+nothifyText txt
+  | T.null txt = Nothing
+  | otherwise  = Just txt
 
 {-
 data AppModel = AppModel 

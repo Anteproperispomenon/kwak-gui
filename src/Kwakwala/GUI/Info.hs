@@ -11,6 +11,7 @@ in the main GUI.
 
 module Kwakwala.GUI.Info
   ( tooltipK
+  , tooltipFK
   , ttUmista
   , ttNapa
   , ttGrubb
@@ -29,6 +30,10 @@ import Monomer.Widgets.Containers.Tooltip
 
 tooltipK :: Text -> WidgetNode s e -> WidgetNode s e
 tooltipK txt = tooltip_ txt [tooltipDelay 600]
+
+tooltipFK :: Text -> WidgetNode s e -> WidgetNode s e
+tooltipFK txt = tooltip_ txt [tooltipDelay 600, tooltipFollow]
+
 
 ttGrubb :: Text
 ttGrubb = "ASCII-compatible orthography based on David Grubb's orthography."

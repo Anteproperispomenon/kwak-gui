@@ -120,6 +120,7 @@ data AppEvent
   | AppDeleteColumn  Int
   | AppDeleteColumn2 Int
   | AppSwapColumn Int Int
+  | AppMoveColumn Int Int
   | AppError Text
   deriving (Eq, Show)
 
@@ -142,7 +143,7 @@ buildUI wenv model = widgetTree where
           ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
 
     --------------------------------
-    -- Select save file 
+    -- Manual Save file Popup
     , popup_ sfmVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $ 
         box (selectSaveFileH sfmHidden inputFile convertSFEvent)
           `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
@@ -269,7 +270,11 @@ buildUI wenv model = widgetTree where
       ]-}
     , hscroll $ spreadColumns (model ^. inputText)
     , spacer
-    , button "Save File" AppSaveFile
+    , hstack $
+       [ box_ [expandContent, sizeReqUpdater sizeReqX] $ button "Save File" AppSaveFile
+       , spacer
+       , button "(Manual)" AppSaveFileMan
+       ]
     , popup overwriteConfVis (confirmMsg "File already Exists. Overwrite?" AppOverWrite AppClosePopups)
     , popup errorAlertVis (altAlertMsg_ (model ^. errorMsg) AppClosePopups [titleCaption "Error"]) `styleBasic` [textFont "Monotype"]
     , popup writeSuccessVis (alertMsg "File Saved Successfully." AppClosePopups)
@@ -288,10 +293,14 @@ buildUI wenv model = widgetTree where
   -- 
   spreadColumns :: IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text) -> WidgetNode AppModel AppEvent
   spreadColumns strs = hgrid_ [childSpacing_ 2] $ forWithKey strs $ \key (hdr, cvtble, iorth, oorth, itxt, otxt) ->
-    dropTarget (\n -> AppSwapColumn n key) $ vstack $
+    -- dropTarget (\n -> AppSwapColumn n key) $ vstack $
+    dropTarget (\case {Left n -> AppMoveColumn n key ; Right n -> AppSwapColumn n key}) $ vstack $
       [ label $ fromMaybe ("Column " <> showt key) hdr
       , spacer
-      , draggable key $ box (label "Swap Column") `styleBasic` [bgColor darkSlateGray, padding 3, border 1 slateGray, radius 3]
+      , hgrid_ [childSpacing_ 2] $
+        [ draggable (Right key :: Either Int Int) $ box (label "Swap") `styleBasic` [bgColor darkSlateGray, padding 3, border 1 slateGray, radius 3]
+        , draggable (Left  key :: Either Int Int) $ box (label "Move") `styleBasic` [bgColor darkSlateGray, padding 3, border 1 slateGray, radius 3]
+        ]
       , spacer
       , tooltipK modifyTT $ labeledCheckboxV "Modify?" cvtble (\bl -> AppChangeModify key bl)
       , spacer
@@ -494,7 +503,37 @@ handleEvent wenv node model evt = case evt of
                         & inputText . at m .~ rsltN
                       )
                   ]
+  -- First one is the column to move,
+  -- second is the "destination".
+  (AppMoveColumn key dst) ->
+    if (key == dst)
+      then []
+      else let itxt = model ^. inputText
+           in case (IM.lookup key itxt, IM.lookup dst itxt, IM.lookup (dst-1) itxt) of
+             (Nothing, _, _) -> []
+             (_, Nothing, _) -> []
+             (rsltKey,rsltDst,Nothing) ->
+                [ Model
+                    (model
+                      & inputText . at (dst-1) .~ rsltKey
+                      & inputText . at key     .~ Nothing
+                    )
+                ]
+             (rsltKey,rsltDst,rsltPre)
+               | (key < dst) -> 
+                   let newMp  = IM.mapKeys (\x -> if (x >= dst) then (x+1) else x) itxt
+                       newMp2 = newMp & at dst .~ rsltKey & at key .~ Nothing
+                       -- newMp1 = IM.insert dst rsltKey newMp
+                       -- newMp2 = IM.delete key newMp2
+                   in [Model (model & inputText .~ newMp2)]
+               | otherwise   -> -- i.e. key > dst
+                   let newMp  = IM.mapKeys (\x -> if (x >= dst && x < key) then (x+1) else x) itxt -- overwrites orig key
+                       newMp' = newMp & at dst .~ rsltKey
+                       -- newMp' = IM.insert dst rsltKey newMp
+                   in [Model (model & inputText .~ newMp')]
 
+
+  
   (AppDeleteColumn  n) -> [ Model (model & delCfmVis .~ True & copyKey .~ n)]
   (AppDeleteColumn2 n) -> 
     [ Model
@@ -505,6 +544,8 @@ handleEvent wenv node model evt = case evt of
 
     ]
 
+  (AppWriteError err) -> [Model (model & errorMsg .~ (renderError err) & errorAlertVis .~ True)]
+
   AppOpenConfig -> [Model (model & configVis .~ True )]
   AppDoneConfig -> [Event AppRefresh, Model (model & configVis .~ False), Task $ writeConfigTask (model ^. cfgFilePath) (model ^. kwakConfig)]
 
@@ -512,8 +553,10 @@ handleEvent wenv node model evt = case evt of
 
   AppOpenFileKey  -> if checkNoPopups then [Event AppOpenFile]  else []
   AppSaveFileKey  -> if checkNoPopups then [Event AppSaveFile]  else []
-  {-
+
   AppSaveFileMan  -> [Model (model & sfmVis .~ True)]
+
+  {-
   AppWriteFileKey -> if checkNoPopups then [Event AppWriteFile] else []
   AppGotInput mtxt -> case mtxt of
      (Just txt) -> [Model (model & inputText .~ txt & outputText .~ getConversion txt)]

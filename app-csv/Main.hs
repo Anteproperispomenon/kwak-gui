@@ -114,6 +114,7 @@ data AppEvent
   | AppChangeIOrth Int  InputOrth
   | AppChangeOOrth Int OutputOrth
   | AppChangeModify Int Bool
+  | AppCheckOverwrite Bool
   | AppStartCopy Int
   | AppCopyColumn Int
   | AppDeleteColumn  Int
@@ -353,13 +354,19 @@ handleEvent wenv node model evt = case evt of
   AppNull -> []
   (AppSetInput  fnm) -> [Model (model & inputFile  .~ fnm & csvVis .~ True)]
   (AppSetInput2    ) -> let fnm = (model ^. inputFile) in [(Task $ AppGotInput <$> readCSVMaybe (model ^. readHeaders) (model ^. csvSep) (T.unpack fnm)), (Model (model & csvVis .~ False))]
-  (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm & sfmVis .~ False & saveVis .~ True)]
+  (AppSetOutput fnm) -> [Model (model & outputFile .~ fnm & sfmVis .~ False), Task $ AppCheckOverwrite <$> doesFileExist (T.unpack fnm)] -- & saveVis .~ True)]
+  (AppCheckOverwrite ovr) ->
+    if ovr
+      then [Model (model & overwriteConfVis .~ True)]
+      else [Model (model & saveVis .~ True)]
+  AppOverWrite -> [Model (model & overwriteConfVis .~ False & saveVis .~ True)]
   -- (AppChangeIOrth ky io) -> [Model (model & inputText . ix ky . _3 .~ io)]
   (AppChangeIOrth ky io) 
     -> [Model 
          (model & inputText . at ky %~ \case
            Nothing -> Nothing
-           Just (hdr, bl, oldIo, oldOo, itxt, otxt) -> Just (hdr, bl, io, oldOo, itxt, convertText io oldOo itxt)
+           Just (hdr, True , oldIo, oldOo, itxt, otxt) -> Just (hdr, True , io, oldOo, itxt, convertText io oldOo itxt)
+           Just (hdr, False, oldIo, oldOo, itxt, otxt) -> Just (hdr, False, io, oldOo, itxt, otxt)
          )
        ]
   -- (AppChangeOOrth ky oo) -> [Model (model & inputText . ix ky . _4 .~ oo)]
@@ -367,7 +374,8 @@ handleEvent wenv node model evt = case evt of
     -> [Model 
          (model & inputText . at ky %~ \case
            Nothing -> Nothing
-           Just (hdr, bl, oldIo, oldOo, itxt, otxt) -> Just (hdr, bl, oldIo, oo, itxt, convertText oldIo oo itxt)
+           Just (hdr, True , oldIo, oldOo, itxt, otxt) -> Just (hdr, True , oldIo, oo, itxt, convertText oldIo oo itxt)
+           Just (hdr, False, oldIo, oldOo, itxt, otxt) -> Just (hdr, False, oldIo, oo, itxt, otxt)
          )
        ]
   -- (AppChangeModify ky b) -> [Model (model & inputText . ix ky . _2 .~ b )]

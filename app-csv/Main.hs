@@ -74,6 +74,7 @@ data AppModel = AppModel
   , _copyVis   :: Bool
   , _copyIO    :: Bool
   , _delCfmVis :: Bool
+  , _rnmVis    :: Bool
   , _nextKey   :: Int
   , _copyKey   :: Int
   , _newHeader :: Text
@@ -121,6 +122,8 @@ data AppEvent
   | AppDeleteColumn2 Int
   | AppSwapColumn Int Int
   | AppMoveColumn Int Int
+  | AppStartRename  Int
+  | AppRenameHeader Int (Maybe Text)
   | AppError Text
   deriving (Eq, Show)
 
@@ -139,7 +142,7 @@ buildUI wenv model = widgetTree where
         box $ vstack
           -- [ kwakConfigWidgetX (kwakConfig . iniValueL)
           [ kwakConfigWidgetX kwakConfig
-          , button "Done" AppDoneConfig
+          , mainButton "Done" AppDoneConfig
           ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
 
     --------------------------------
@@ -168,7 +171,7 @@ buildUI wenv model = widgetTree where
           , tooltipFK headerInTT $ box $ labeledCheckbox "Get Headers from File" readHeaders
           -- , tooltipK headerInTT $ toggleButton "Get Headers from File" readHeaders
           , spacer
-          , button "Import Data" AppSetInput2 -- don't have the model, but that's okay.
+          , mainButton "Import Data" AppSetInput2 -- don't have the model, but that's okay.
           , spacer
           , button "Cancel" AppClosePopups
           ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
@@ -192,7 +195,7 @@ buildUI wenv model = widgetTree where
           -- The tooltip doesn't work. May be because it is embedded in a popup.
           , tooltipFK headerOutTT $ labeledCheckbox "Save Headers to File" readHeaders
           , spacer
-          , button "Save File" AppWriteFile
+          , mainButton "Save File" AppWriteFile
           , spacer
           , button "Cancel" AppClosePopups
           ] `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
@@ -215,6 +218,24 @@ buildUI wenv model = widgetTree where
           , button "Cancel" AppClosePopups
           ]
           `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
+
+    --------------------------------
+    -- Confirm Rename
+    
+    , popup_ rnmVis [popupAlignToWindow, alignTop, alignCenter, popupOffset (def {_pY = 30}), popupDisableClose] $ 
+        box $ vstack
+          [ label ("Rename Column" ) `styleBasic` [textSize 24, textCenter]
+          , spacer
+          , textField newHeader
+          , spacer
+          , mainButton "Rename" (AppRenameHeader (model ^. copyKey) (Just (model ^. newHeader)))
+          , spacer
+          , button "Delete Title" (AppRenameHeader (model ^. copyKey) Nothing)
+          , spacer
+          , button "Cancel" AppClosePopups
+          ]
+          `styleBasic` [bgColor dimGray, padding 10, border 3 black, radius 7]
+
 
     --------------------------------
     -- Copy Dialog
@@ -272,7 +293,11 @@ buildUI wenv model = widgetTree where
   spreadColumns strs = hgrid_ [childSpacing_ 2] $ forWithKey strs $ \key (hdr, cvtble, iorth, oorth, itxt, otxt) ->
     -- dropTarget (\n -> AppSwapColumn n key) $ vstack $
     dropTarget (\case {Left n -> AppMoveColumn n key ; Right n -> AppSwapColumn n key}) $ vstack $
-      [ label $ fromMaybe ("Column " <> showt key) hdr
+      [ hstack $
+        [ label $ fromMaybe ("Column " <> showt key) hdr
+        , filler
+        , button "Rename" (AppStartRename key) `styleBasic` [paddingV 5]
+        ]
       , spacer
       , hgrid_ [childSpacing_ 2] $
         [ draggable (Right key :: Either Int Int) $ box (label "Swap") `styleBasic` [bgColor darkSlateGray, padding 3, border 1 slateGray, radius 3]
@@ -288,8 +313,8 @@ buildUI wenv model = widgetTree where
       , textDropdownV oorth (\oo -> AppChangeOOrth key oo) [OUmista, ONapa, OGrubb, OGeorgian, OBoas, OIsland, OIpa]
       , spacer
       , hgrid_ [childSpacing_ 2] $ 
-         [ button "Copy" (AppStartCopy key)
-         , button "Delete" (AppDeleteColumn key)
+         [ button "Copy" (AppStartCopy key)      `styleBasic` [paddingV 5]
+         , button "Delete" (AppDeleteColumn key) `styleBasic` [paddingV 5]
          ]
       , spacer
       , textAreaV_ otxt (\_ -> AppNull) [readOnly] 
@@ -307,16 +332,6 @@ buildUI wenv model = widgetTree where
   headerOutTT = 
     "If selected, save the header names as the first entry in each column.\n"
       <> "In general, use the same setting for this as you did when importing."
-
-  {-
-  spreadColumns :: [String] -> [Text] -> WidgetNode AppModel AppEvent
-  spreadColumns hdrs txts
-    = hgrid $ zipWith3L hdrs [0..]  $ \hdr txt n ->
-        vstack $
-          [ optionButton $ T.pack hdr
-          , textAreaV_ txt (\_ -> AppNull) [readOnly]
-          ]
-  -}
 
 getHeaderText :: AppModel -> Int -> Text
 getHeaderText model ky
@@ -368,7 +383,7 @@ handleEvent wenv node model evt = case evt of
       then [Model (model & overwriteConfVis .~ True)]
       else [Model (model & saveVis .~ True)]
   AppOverWrite -> [Model (model & overwriteConfVis .~ False & saveVis .~ True)]
-  (AppChangeIOrth ky io) 
+  (AppChangeIOrth ky io)
     -> [Model 
          (model & inputText . at ky %~ \case
            Nothing -> Nothing
@@ -420,6 +435,7 @@ handleEvent wenv node model evt = case evt of
       & saveVis .~ False
       & copyVis .~ False
       & delCfmVis .~ False
+      & rnmVis     .~ False
       )]
 -- writeFileTask :: FilePath -> FilePath -> Bool -> Char -> IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text) -> AppEventResponse AppModel AppEvent
   AppWriteFile -> 
@@ -440,9 +456,28 @@ handleEvent wenv node model evt = case evt of
       (model 
         & copyVis .~ True
         & copyKey .~ n
-        -- & 
       )
     ]
+
+  (AppStartRename n) -> 
+    [ Model 
+      (model 
+        & rnmVis  .~ True
+        & copyKey .~ n
+      )
+    ]
+
+  (AppRenameHeader n txt) ->
+    case (IM.lookup n (model ^. inputText)) of
+      Nothing -> [ Model (model & rnmVis .~ False & newHeader .~ "")]
+      Just (hdr, mdfy, iorth, oorth, itxt, otxt) ->
+        [ Model
+          ( model
+             & rnmVis .~ False
+             & newHeader .~ ""
+             & inputText . at n .~ Just ((txt >>= nothifyText), mdfy, iorth, oorth, itxt, otxt)
+          )
+        ]
 
   (AppCopyColumn n) -> 
     case (IM.lookup n (model ^. inputText)) of
@@ -526,13 +561,14 @@ handleEvent wenv node model evt = case evt of
 
   (AppError err) -> [Model (model & errorAlertVis .~ True & errorMsg .~ err)]
 
-  AppOpenFileKey  -> if checkNoPopups then [Event AppOpenFile]  else []
-  AppSaveFileKey  -> if checkNoPopups then [Event AppSaveFile]  else []
+  AppOpenFileKey  -> if  checkNoPopups                    then [Event AppOpenFile]  else []
+  AppSaveFileKey  -> if (checkNoPopups && checkFileInMem) then [Event AppSaveFile]  else []
 
   AppSaveFileMan  -> [Model (model & sfmVis .~ True)]
   
   AppWriteSuccess -> [Model (model & writeSuccessVis .~ True)]
-
+  
+  (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
 
   {-
   AppWriteFileKey -> if checkNoPopups then [Event AppWriteFile] else []
@@ -543,13 +579,8 @@ handleEvent wenv node model evt = case evt of
   -- _ -> []
   
   AppWriteExists -> [Model (model & overwriteConfVis .~ True)]
-  (AppWriteError err) -> [Model (model & errorMsg .~ (renderError err) & errorAlertVis .~ True), tlogErrTask err]
-  AppOverWrite -> [Task $ overWriteFileTask (T.unpack (model ^. outputFile)) (model ^. outputText), Model (model & overwriteConfVis .~ False)] 
   AppRefresh  -> [Model (model & outputText .~ getConversion (model ^. inputText))]
   AppRefreshI -> [Model (model & outputText .~ getConversion (model ^. inputText) & inputText %~ modText)]
-  (AppCurDir fp) -> [Model (model & currentDir .~ (T.pack fp))]
-  -- AppDoneConfig -> let newCfg = selfUpdate (model ^. kwakConfig)
-  --   in [Model (model & configVis .~ False & kwakConfig .~ newCfg)] -- Add task here to update config file.
   
   -}
   _ -> []
@@ -564,8 +595,12 @@ handleEvent wenv node model evt = case evt of
       || (model ^. csvVis)
       || (model ^. saveVis)
       || (model ^. copyVis)
-      || (model ^. delCfmVis))
+      || (model ^. delCfmVis)
+      || (model ^. rnmVis))
       
+    checkFileInMem :: Bool
+    checkFileInMem = not $ IM.null $ model ^. inputText
+
     handleFile1 :: Maybe [Text] -> AppEvent
     handleFile1 Nothing = AppNull
     handleFile1 (Just []) = AppNull
@@ -634,8 +669,8 @@ main = do
       ]
     -- model = AppModel IUmista OUmista "" "" "" "" "" False False False False False "" def cfgFile
     -- Not using Ini in Model version:
-    model' cfgFile (Left txt)   = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False True  False False False False False False False True False 1 0 "" txt def def cfgFile Nothing
-    model' cfgFile (Right iniX) = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False False False False False False False False False True False 1 0 "" "" (getIniValue iniX) def cfgFile Nothing
+    model' cfgFile (Left txt)   = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False True  False False False False False False False True False False 1 0 "" txt def def cfgFile Nothing
+    model' cfgFile (Right iniX) = AppModel {-IUmista OUmista-} "" "" IM.empty "" True False False False False False False False False False True False False 1 0 "" "" (getIniValue iniX) def cfgFile Nothing
     -- Using Ini in Model version:
     -- defIni = ini def configSpec
     -- model' cfgFile (Left txt) = AppModel IUmista OUmista "" "" "" "" "" False True False False False txt defIni cfgFile Nothing
@@ -709,7 +744,7 @@ writeFileTask inp fp hdrs spr mps
       -- bl <- doesFileExist fp -- moved to different phase
       -- if bl
         -- then return AppWriteExists
-      eEvt <- try @SomeException (TU.writeFile fp donList)
+      eEvt <- try @SomeException (BS.writeFile fp donList)
       case eEvt of
         Left x   -> return (AppWriteError $ T.pack (show x))
         Right () -> return AppWriteSuccess
@@ -728,11 +763,21 @@ writeFileTask inp fp hdrs spr mps
     altList :: [[Text]]
     altList = transpose newList
 
-    finList :: [Text]
-    finList = map (T.intercalate (T.singleton spr)) altList
+    -- finList :: [Text]
+    -- finList = map (T.intercalate (T.singleton spr)) altList
     
-    donList :: Text
-    donList = (T.intercalate "\n" finList) <> "\n"
+    finList :: [[BL.ByteString]]
+    finList = map (map (BL.fromStrict . T.encodeUtf8)) altList
+
+    -- finErr   :: [CSVError] 
+    -- finTable :: CSVTable
+    (finErr, finTable) = toCSVTable finList
+
+    donList :: BS.ByteString
+    donList = BL.toStrict $ case spr of
+      { ',' -> ppCSVTable finTable
+      ;  _  -> ppDSVTable False spr finTable
+      }
 
 writeConfigTask :: FilePath -> KwakConfigModel -> IO AppEvent
 writeConfigTask fp kcm = do

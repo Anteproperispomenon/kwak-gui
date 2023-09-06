@@ -15,7 +15,16 @@ the different orthographies are in the file.
 
 In general, the best way to work with a mixture of English and 
 Kwakwala is to use a spreadsheet program, such as Microsoft 
-Excel or LibreOffice Calc. Generally, you'll have a file with
+Excel or LibreOffice Calc. In the past, you would have to
+manually extract one column of Kwak'wala in exclusively one
+orthography, but now, you can use `kwak-gui-csv` to manage
+csv files directly. All you have to do is open a spreadsheet
+file, save it as a `.csv` file, and then open it with
+`kwak-gui-csv`. 
+
+If `kwak-gui-csv` doesn't work, you can manually extract the
+data you want to convert from the `.csv` file, and then run
+it through `kwak-gui-file`. Generally, you'll have a file with
 one column for English, and one or more columns for Kwak'wala.
 You can strip out the English text (and, if applicable, Kwak'wala
 text in other orthographies), save as a `.csv` file, and then
@@ -24,13 +33,17 @@ can the re-open the new converted `.csv` file in your spreadsheet
 program, and copy the converted cells to where you want them.
 
 For step-by-step instructions on how to convert your spreadsheets
-to `.csv` and run them through the program, there is [a tutorial](csv/win-libre.md)
+to `.csv` and run them through `kwak-gui-file`, there is [a tutorial](csv/win-libre.md)
 on how to do so using LibreOffice Calc on Windows. There should be
 tutorials for other platforms and programs soon.
 
 ## Tutorial Links
 
-### Converting Spreadsheets
+### Using kwak-gui-csv
+
+  - [Windows](csv-edit.md)
+
+### Manually Converting Spreadsheets
 
   - Windows
     - [LibreOffice Calc](csv/win-libre.md)

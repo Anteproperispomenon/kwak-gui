@@ -359,12 +359,6 @@ sizeReqX :: (SizeReq, SizeReq) -> (SizeReq, SizeReq)
 sizeReqX (szrW, szrH)
   = (szrW {_szrFlex = 5, _szrExtra = 5, _szrFactor = 0.005}, szrH)
 
-{-
-  | AppChangeIOrth Int  InputOrth
-  | AppChangeOOrth Int OutputOrth
-  | AppChangeModify Int Bool
--}
-
 handleEvent
   :: WidgetEnv AppModel AppEvent
   -> WidgetNode AppModel AppEvent
@@ -790,26 +784,4 @@ nothifyText :: Text -> Maybe Text
 nothifyText txt
   | T.null txt = Nothing
   | otherwise  = Just txt
-
-{-
-data AppModel = AppModel 
-  { _inputFile  :: Text
-  , _outputFile :: Text
-  , _inputText  :: IM.IntMap (Maybe Text, Bool, InputOrth, OutputOrth, Text, Text)
-  , _currentDir :: Text -- Current Working Directory
-  , _overwriteConfVis :: Bool
-  , _errorAlertVis :: Bool
-  , _writeSuccessVis :: Bool
-  , _openErrorVis :: Bool
-  , _configVis :: Bool
-  , _sfmVis    :: Bool
-  , _errorMsg :: Text
-  , _kwakConfig :: KwakConfigModel
-  , _sfmHidden :: HiddenVal SaveFileModel
-  , _cfgFilePath :: FilePath
-  , _csvSep :: Maybe Char
-  } deriving (Eq, Show)
-
--}
-
 

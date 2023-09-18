@@ -20,6 +20,8 @@ configSpec = do
                       & comment ["If true, use the letter 'j' to", "represent the phoneme /h/."]
     kcmGrubbUse' .= field "glottal-start" bool
                       & comment ["If false, don't notate glottal stops before", "vowels at the beginnings of words"]
+    kcmGrubbUse7 .= field "use-7" bool
+                      & comment ["If true, replace apostrophes with the number 7."]
   section "IPA" $ do
     kcmIpaTies   .= field "use-ties" bool
                       & comment ["If true, use ties for affricates in IPA."]

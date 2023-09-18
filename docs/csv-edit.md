@@ -11,7 +11,7 @@ This is fairly easy in a program like LibreOffice Calc or
 Microsoft Excel. When converting, these programs will usually
 give you options on how to export the data. The most common option
 is what to use as the cell seperator. The most common option is to
-use the comma character ( `,` ), follows by the semi-colon ( `;` ).
+use the comma character ( `,` ), followed by the semi-colon ( `;` ).
 Using comma is probably the best choice, but if you have problems
 when using it, you can try exporting with a different separator.
 Remember what character you use as your separator, as you'll need
@@ -133,6 +133,8 @@ orthography in a longer list. Note that if you want to move a column
 to the end, you can drag the `Move` handle to the last column, and
 then `Swap` the last two columns.
 
+For more information on `Move`, see the appendix.
+
 ### Copying a Row as a Different Orthography
 
 Generally, when using this program, you'll want to add new columns that
@@ -244,3 +246,57 @@ saved successfully
 After seeing this message, you can then open the `.csv` file back
 up in your preferred spreadsheet editor, and convert it to whatever
 format you want.
+
+## Appendix
+
+### More details on `Move`
+
+While using `Move` was documented in the main help in the section
+on moving columns, there were no images for performing `Move`.
+Instead, here's a demonstration of using `Move` to move columns around.
+
+First, a spreadsheet with various columns is loaded up.
+
+After that, we can click and drag the `Move` handle of Column 2...
+
+![Successful Save](imgs/csv/kwak-gui-csv-037-move-1.png)
+
+... and drag it on top of Column 4.
+
+![Successful Save](imgs/csv/kwak-gui-csv-038-move-2.png)
+
+This results in moving the second column to the left of the target 
+column (the fourth column). Since the same thing could be 
+accomplished by just swapping the second and third columns, 
+we'll next illustrate a larger move.
+
+![Successful Save](imgs/csv/kwak-gui-csv-039-move-3.png)
+
+First, we click and drag on the `Move` handle on the second column 
+(displayed as `Column 3` at the moment, due to the way the 
+program handles moves)...
+
+![Successful Save](imgs/csv/kwak-gui-csv-040-move-4.png)
+
+... and then we drag it to the final column, making it the 
+penultimate column.
+
+![Successful Save](imgs/csv/kwak-gui-csv-041-move-5.png)
+
+And we can just leave it there if that's where we want it.
+However, if we want to make it the final column...
+
+![Successful Save](imgs/csv/kwak-gui-csv-042-move-6.png)
+
+... we can simply click and drag its `Swap` handle...
+
+![Successful Save](imgs/csv/kwak-gui-csv-043-move-7.png)
+
+... and drag it to the final column again.
+
+![Successful Save](imgs/csv/kwak-gui-csv-044-move-8.png)
+
+Now this column is the final column, as desired.
+
+![Successful Save](imgs/csv/kwak-gui-csv-045-move-9.png)
+

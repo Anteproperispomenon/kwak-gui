@@ -31,11 +31,11 @@ packages:
     git: https://github.com/Anteproperispomenon/kwak-orth.git
     pantry-tree:
       size: 7067
-      sha256: 155fb7d3b6b3795d81635b81ea695fe2c9f512d56840b53f9b80343ee2bde902
-    commit: 430e13a9275855db63209ba12ef4f3d374986cb0
+      sha256: 0fbfc701e36202f2701afbeb0bbdf245345b041687ceda1b18df501c601d7fed
+    commit: e733cb379e7b04397b335fe9c0b0b258d07f157a
   original:
     git: https://github.com/Anteproperispomenon/kwak-orth.git
-    commit: 430e13a9275855db63209ba12ef4f3d374986cb0
+    commit: e733cb379e7b04397b335fe9c0b0b258d07f157a
 snapshots:
 - completed:
     size: 648924

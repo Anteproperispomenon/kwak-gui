@@ -7,6 +7,7 @@ module Kwakwala.GUI.Config
   -- * Lenses
   , kcmGrubbUseJ
   , kcmGrubbUse'
+  , kcmGrubbUse7
   , kcmIpaTies
   , kcmGeorgianCfg
   -- ** Georgian sub-lenses
@@ -32,6 +33,7 @@ import Monomer
 data KwakConfigModel = KwakConfigModel
   { _kcmGrubbUseJ :: Bool
   , _kcmGrubbUse' :: Bool -- Keep glottal stops at word start.
+  , _kcmGrubbUse7 :: Bool -- replace glottal stops with '7'.
   , _kcmIpaTies :: Bool
   , _kcmGeorgianCfg :: GeorgianOutputConfig
   } deriving (Eq, Show)
@@ -40,6 +42,7 @@ instance Default KwakConfigModel where
   def = KwakConfigModel
     { _kcmGrubbUseJ = True
     , _kcmGrubbUse' = False
+    , _kcmGrubbUse7 = False
     , _kcmIpaTies = True
     , _kcmGeorgianCfg = (GeorgianOutputConfig False False)
     }
@@ -62,6 +65,7 @@ kwakConfigWidget mdlLens f = vstack $
        , spacer
        , labeledCheckbox_ "Use 'J' to represent the phoneme /h/" ((cloneLens mdlLens) . kcmGrubbUseJ) [textRight]
        , labeledCheckbox_ "Include glottal stops before vowels at the start of a word" ((cloneLens mdlLens) . kcmGrubbUse') [textRight]
+       , labeledCheckbox_ "Replace apostrophes with \'7\'." ((cloneLens mdlLens) . kcmGrubbUse7) [textRight]
        , spacer
        , label "IPA" `styleBasic` [textSize 20, textCenter]
        , spacer
@@ -85,6 +89,7 @@ kwakConfigWidgetX mdlLens = vstack $
        , spacer
        , labeledCheckbox_ "Use 'J' to represent the phoneme /h/" ((cloneLens mdlLens) . kcmGrubbUseJ) [textRight]
        , labeledCheckbox_ "Include glottal stops before vowels at the start of a word" ((cloneLens mdlLens) . kcmGrubbUse') [textRight]
+       , labeledCheckbox_ "Replace apostrophes with \'7\'." ((cloneLens mdlLens) . kcmGrubbUse7) [textRight]
        , spacer
        , label "IPA" `styleBasic` [textSize 20, textCenter]
        , spacer

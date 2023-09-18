@@ -67,8 +67,9 @@ updateConfigFile' :: FilePath -> KwakConfigModel -> IO (Maybe Text)
 updateConfigFile' fp kcm = ignoreResult <$> do
   tryCont' @SomeException (TU.readFile fp) $ \txt -> 
     tryContP (first T.pack $ parseIni txt (ini kcm configSpec)) $ \tmpIni ->
-        let newIni = updateIni kcm tmpIni
-            outIni = serializeIni newIni
+        let newIni = setUpdateAddOptional tmpIni
+            nwrIni = updateIni kcm newIni
+            outIni = serializeIni nwrIni
         in tryContF @SomeException $ TU.writeFile fp outIni
 -- NOTE: Instead of opening and re-opening the file
 -- separately, maybe open the file once in ReadWriteMode?

@@ -2,6 +2,7 @@ module Kwakwala.GUI.Config.Parsing
   ( configSpec
   , parseConfig
   , selfUpdate
+  , setUpdateAddOptional
   ) where
 
 -- not specifying anything so that lenses come through.
@@ -18,23 +19,33 @@ configSpec = do
   section "GRUBB" $ do
     kcmGrubbUseJ .= field "use-j" bool
                       & comment ["If true, use the letter 'j' to", "represent the phoneme /h/."]
+                      & optional
     kcmGrubbUse' .= field "glottal-start" bool
                       & comment ["If false, don't notate glottal stops before", "vowels at the beginnings of words"]
+                      & optional
     kcmGrubbUse7 .= field "use-7" bool
                       & comment ["If true, replace apostrophes with the number 7."]
+                      & optional
   section "IPA" $ do
     kcmIpaTies   .= field "use-ties" bool
                       & comment ["If true, use ties for affricates in IPA."]
+                      & optional
   section "GEORGIAN" $ do
     (kcmGeorgianCfg . gocUseLabSign) .= field "alt-lab" bool
                       & comment ["If true, use the Abkhaz labialisation mark", "to represent labialisation."]
+                      & optional
     (kcmGeorgianCfg . gocUsePalSign) .= field "pal-vis" bool
                       & comment ["If true, use the Abkhaz palatalisation mark", "to explicitly mark palatalisation."]
+                      & optional
 
 parseConfig :: T.Text -> Either T.Text (Ini KwakConfigModel)
 parseConfig txt = case (parseIni txt (ini def configSpec)) of
   Left  str -> Left  $ T.pack str
-  Right ins -> Right $ ins
+  Right ins -> Right $ setUpdateAddOptional $ ins
+
+setUpdateAddOptional :: Ini s -> Ini s
+setUpdateAddOptional s = setIniUpdatePolicy dp s
+  where dp = defaultUpdatePolicy {updateAddOptionalFields = True}
 
 -- | Update using the current value. 
 -- Provided since using `iniValueL`
